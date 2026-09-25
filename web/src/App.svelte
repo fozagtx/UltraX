@@ -171,11 +171,7 @@
     <div class="hero-copy">
       <span class="eyebrow">OKX AI · A2MCP agent service · x402 on X Layer</span>
       <h1>Predictive intelligence for stocks on OKX.</h1>
-      <p class="sub">
-        Daily, weekly and monthly runners, per-stock signals and pre-IPO intelligence across every
-        stock perpetual and xStock listed on OKX. Agents pay per call in <strong>USDT0</strong> and get
-        calibrated scores, up-probabilities, positioning and valuation data.
-      </p>
+      <p class="sub">Runners, signals and pre-IPO data for agents.</p>
       <div class="hero-meta">
         <span class="chip" class:open={preview?.usMarket.open} class:closed={preview && !preview.usMarket.open}>
           <i></i>
@@ -510,10 +506,6 @@
     max-width: 56ch;
     color: var(--ink-2);
     font-size: 15px;
-  }
-  .sub strong {
-    color: var(--ink);
-    font-weight: 600;
   }
   .hero-meta {
     display: flex;
