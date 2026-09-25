@@ -1,30 +1,5 @@
 services:
   - type: web
-    name: kwyh-api
-    runtime: node
-    region: singapore
-    plan: starter
-    buildCommand: npm ci && npm run build
-    startCommand: npm start
-    healthCheckPath: /health
-    envVars:
-      - key: NETWORK
-        value: eip155:196
-      - key: XLAYER_RPC_URL
-        value: https://rpc.xlayer.tech
-      - key: XLAYER_RPC_URL_BACKUP
-        value: https://xlayerrpc.okx.com
-      - key: PUBLIC_API_BASE_URL
-        value: https://kwyh-api.onrender.com
-      - key: PAY_TO
-        sync: false
-      - key: OKX_API_KEY
-        sync: false
-      - key: OKX_SECRET_KEY
-        sync: false
-      - key: OKX_PASSPHRASE
-        sync: false
-  - type: web
     name: kwyh-web
     runtime: static
     rootDir: web
@@ -32,4 +7,4 @@ services:
     staticPublishPath: dist
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://kwyh-api.onrender.com
+        value: https://<hf-user>-know-what-you-hold.hf.space
