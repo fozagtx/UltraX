@@ -7,7 +7,7 @@ import {
   EXPLORER_BASE,
   USDT0_ADDRESS,
   USDT0_DECIMALS,
-} from "@kwyh/core";
+} from "./core/index.js";
 import { log } from "./log.js";
 
 const TRANSFER = parseAbiItem(

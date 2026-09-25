@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import request from "supertest";
 import { createApp, challengeOnlyFacilitator } from "./server.js";
-import type { CheckDeps } from "@kwyh/core";
+import type { CheckDeps } from "./core/index.js";
 
 const ENV = {
   NETWORK: "eip155:196",
