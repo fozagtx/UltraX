@@ -1,7 +1,7 @@
 import { loadEnv } from "./env.js";
 import { createApp, makeLiveCheckDeps } from "./server.js";
 import { createPaymentScanner } from "./payments.js";
-import { makeXLayerClient, OkxClient } from "@kwyh/core";
+import { makeXLayerClient, OkxClient } from "./core/index.js";
 import { log } from "./log.js";
 
 async function main() {

@@ -4,8 +4,8 @@ services:
     runtime: node
     region: singapore
     plan: starter
-    buildCommand: npm ci && npm run build -w packages/core && npm run build -w apps/api
-    startCommand: npm run start -w apps/api
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
     healthCheckPath: /health
     envVars:
       - key: NETWORK
@@ -24,15 +24,3 @@ services:
         sync: false
       - key: OKX_PASSPHRASE
         sync: false
-  - type: web
-    name: kwyh-web
-    runtime: node
-    region: singapore
-    plan: starter
-    buildCommand: npm ci && npm run build -w packages/core && npm run build -w apps/web
-    startCommand: npm run start -w apps/web
-    envVars:
-      - key: API_BASE_URL
-        value: https://kwyh-api.onrender.com
-      - key: NEXT_PUBLIC_API_BASE_URL
-        value: https://kwyh-api.onrender.com

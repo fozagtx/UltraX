@@ -29,7 +29,7 @@ import {
   validateCheckRequest,
   type CheckDeps,
   type CheckRequest,
-} from "@kwyh/core";
+} from "./core/index.js";
 import { log } from "./log.js";
 import type { PaymentScanState } from "./payments.js";
 
@@ -295,7 +295,7 @@ export function createApp(deps: AppDeps): Express {
 
 export interface LiveSources {
   okx: OkxClient;
-  chain: import("@kwyh/core").XLayerClient;
+  chain: import("./core/index.js").XLayerClient;
   tokenDecimals: Map<string, number>;
 }
 

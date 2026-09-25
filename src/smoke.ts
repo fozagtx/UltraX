@@ -6,7 +6,7 @@ import {
   makeXLayerClient,
   readTokenMeta,
   XSTOCKS,
-} from "@kwyh/core";
+} from "./core/index.js";
 
 const rpcUrls = [
   process.env.XLAYER_RPC_URL ?? "https://rpc.xlayer.tech",

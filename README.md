@@ -136,8 +136,30 @@ on X Layer (`eip155:196`; testnet `eip155:1952`).
 
 ## OKX AI listing
 
-Listed on OKX AI as an A2MCP service: **xStock Pre-Trade Check**, fee 0.005
-USDT per call, endpoint `POST /check`.
+An A2MCP agent service on OKX AI: **xStock Pre-Trade Check**, 0.005 USDT per
+call, endpoint `POST /check`. Billing goes through the OKX Payment SDK
+(`@okxweb3/x402-express`). Unpaid calls get `402` with a `PAYMENT-REQUIRED`
+header, and paid calls settle in USDT0 on X Layer.
+
+## Run the service
+
+```bash
+cp .env.example .env    # set PAY_TO and the OKX_* keys
+npm ci
+npm run dev             # or: npm run build && npm start
+```
+
+Check the endpoint before you register:
+
+```bash
+curl -i -X POST https://<your-domain>/check -H 'content-type: application/json' \
+  -d '{"ticker":"NVDAx","side":"sell","sizeUSD":500}'
+# expected: HTTP 402 + PAYMENT-REQUIRED
+```
+
+Then register and list it as an A2MCP ASP with Onchain OS, following
+[How to Register as an ASP](https://web3.okx.com/onchainos/dev-docs/okxai/registerasp).
+You provide the name, description, price (0.005) and the public HTTPS endpoint.
 
 ## Restricted regions
 
