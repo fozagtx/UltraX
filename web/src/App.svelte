@@ -149,7 +149,7 @@
     <div class="pill">
       OKX AI · A2MCP agent service · X Layer
     </div>
-    <h1>Know what you hold<br />before you trade it.</h1>
+    <h1>Know what you hold<br class="desktop" /> before you trade it.</h1>
     <p class="sub">
       A pre-trade check for tokenized stocks on X Layer. Agents pay
       <strong>{catalog?.fee ?? "0.005"} USDT0</strong> per call and get a rule-based
@@ -514,6 +514,100 @@
     }
     .links {
       display: none;
+    }
+  }
+  @media (max-width: 640px) {
+    .strip {
+      font-size: 11px;
+      padding: 8px 12px;
+    }
+    .nav {
+      padding: 14px 16px 0;
+      gap: 10px;
+    }
+    .brand {
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    .dot-status {
+      font-size: 0;
+    }
+    .dot-status i {
+      width: 9px;
+      height: 9px;
+    }
+    .btn {
+      padding: 8px 12px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .actions {
+      gap: 8px;
+    }
+    main {
+      padding: 0 16px 48px;
+      gap: 14px;
+    }
+    .hero {
+      padding: 48px 0 28px;
+      gap: 14px;
+    }
+    .desktop {
+      display: none;
+    }
+    .sub {
+      font-size: 15px;
+    }
+    .chip {
+      font-size: 12px;
+      padding: 7px 12px;
+    }
+    .card {
+      padding: 20px;
+      border-radius: 18px;
+    }
+    .card:hover {
+      transform: none;
+    }
+    .big {
+      font-size: 34px;
+    }
+    .token header {
+      margin-bottom: 16px;
+    }
+    .wide .row {
+      flex-direction: column;
+      gap: 14px;
+    }
+    .stats {
+      width: 100%;
+      justify-content: flex-start;
+    }
+    .stats div {
+      align-items: flex-start;
+    }
+    .n {
+      font-size: 24px;
+    }
+    table {
+      display: block;
+      overflow-x: auto;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+    td,
+    th {
+      padding-right: 14px;
+    }
+    pre {
+      font-size: 12px;
+      padding: 14px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    footer {
+      padding: 0 16px 32px;
+      flex-direction: column;
     }
   }
 
