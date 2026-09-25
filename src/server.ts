@@ -76,6 +76,7 @@ const startedAt = Date.now();
 
 export function createApp(deps: AppDeps): Express {
   const app = express();
+  app.set("trust proxy", true);
   app.use(express.json());
   app.use((req: Request, res: Response, next: NextFunction) => {
     res.setHeader("access-control-allow-origin", deps.env.WEB_ORIGIN);
