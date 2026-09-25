@@ -178,8 +178,14 @@ describe("API", () => {
     expect(preview.status).toBe(200);
     expect(preview.body.runners.daily.length).toBeGreaterThan(0);
     expect(Object.keys(preview.body.runners.daily[0]).sort()).toEqual(
-      ["last", "preIpo", "returnPct", "symbol"].sort(),
+      ["closes", "last", "preIpo", "returnPct", "symbol"].sort(),
     );
+    expect(preview.body.runners.daily[0].closes).toBeInstanceOf(Array);
+    expect(
+      preview.body.runners.daily[0].closes.every(
+        (c: unknown) => typeof c === "number",
+      ),
+    ).toBe(true);
     expect(preview.body.runners.daily[0]).not.toHaveProperty("score");
 
     const payments = await request(app).get("/payments/recent");

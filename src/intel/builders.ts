@@ -599,15 +599,16 @@ export async function buildPreview(
         ),
         impliedValuationUsd:
           company && ticker ? ticker.last * company.estimatedShares : null,
+        closes: closesFor(snapshot, instrument.instId),
       };
     });
   return {
     updatedAt: snapshot.updatedAt,
     usMarket: isNyseOpen(now),
     runners: {
-      daily: daily.runners.map((row) => previewRunner(row)),
-      weekly: weekly.runners.map((row) => previewRunner(row)),
-      monthly: monthly.runners.map((row) => previewRunner(row)),
+      daily: daily.runners.map((row) => previewRunner(snapshot, row)),
+      weekly: weekly.runners.map((row) => previewRunner(snapshot, row)),
+      monthly: monthly.runners.map((row) => previewRunner(snapshot, row)),
     },
     preIpo,
     model: {
@@ -621,12 +622,17 @@ export async function buildPreview(
   };
 }
 
-function previewRunner(row: Record<string, unknown>) {
+function closesFor(snapshot: MarketSnapshot, instId: string): number[] {
+  return (snapshot.series[instId] ?? []).slice(-30).map((bar) => bar.close);
+}
+
+function previewRunner(snapshot: MarketSnapshot, row: Record<string, unknown>) {
   return {
     symbol: row.symbol,
     last: row.last,
     returnPct: row.returnPct,
     preIpo: row.preIpo,
+    closes: closesFor(snapshot, row.instId as string),
   };
 }
 

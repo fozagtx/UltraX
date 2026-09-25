@@ -25,6 +25,7 @@ export interface PreviewRunner {
   last: number;
   returnPct: number;
   preIpo: boolean;
+  closes: number[];
 }
 
 export interface PreviewPreIpo {
@@ -33,6 +34,7 @@ export interface PreviewPreIpo {
   last: number | null;
   change24hPct: number | null;
   impliedValuationUsd: number | null;
+  closes: number[];
 }
 
 export interface CalibrationSummary {
