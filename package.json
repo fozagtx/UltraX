@@ -1,17 +1,18 @@
 {
-  "name": "ultrax",
+  "name": "know-what-you-hold",
   "private": true,
   "type": "module",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "agent"
   ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "build": "npm run build -w packages/metrics && npm run build -w apps/api && npm run build -w apps/web",
-    "test": "npm run test -w packages/metrics --if-present && npm run test -w apps/api && npm run test -w apps/web --if-present",
+    "build": "npm run build -w packages/core && npm run build -w apps/api && npm run build -w apps/web",
+    "test": "npm run test -w packages/core --if-present && npm run test -w apps/api && npm run test -w apps/web --if-present",
     "dev:api": "npm run dev -w apps/api"
   }
 }

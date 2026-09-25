@@ -4,37 +4,34 @@ import express, {
   type Response,
   type NextFunction,
 } from "express";
-import { z } from "zod";
 import {
   paymentMiddleware,
   x402ResourceServer,
 } from "@okxweb3/x402-express";
 import { ExactEvmScheme } from "@okxweb3/x402-evm/exact/server";
 import { OKXFacilitatorClient } from "@okxweb3/x402-core";
-import type { RouteConfig, RoutesConfig } from "@okxweb3/x402-core/server";
 import {
-  ALL_ENDPOINTS,
-  METRIC_CATALOG,
-  WHALE_ALERT_EVENT_SHAPE,
+  buildCatalog,
   CHAIN_ID,
-  USDT0_ADDRESS,
-} from "@ultrax/metrics";
-import type { Repo } from "./repo.js";
+  CHECK_INPUT_FIELDS,
+  getMultiplier,
+  getOkxTicker,
+  getStockPrice,
+  getXLayerPrice,
+  INPUT_REQUIRED,
+  isNyseOpen,
+  OkxClient,
+  PRICE_USD,
+  quote as dexQuote,
+  readTokenMeta,
+  runCheck,
+  XSTOCKS,
+  validateCheckRequest,
+  type CheckDeps,
+  type CheckRequest,
+} from "@kwyh/core";
 import { log } from "./log.js";
-
-export interface AppDeps {
-  repo: Repo;
-  env: {
-    NETWORK: string;
-    PAY_TO_ADDRESS: string;
-    PUBLIC_API_BASE_URL: string;
-    COLLECTOR_ENABLED: boolean;
-  };
-  facilitator?: { apiKey: string; secretKey: string; passphrase: string } | FakeFacilitator;
-  syncFacilitatorOnStart?: boolean;
-  paymentsDisabled?: boolean;
-  lastCollectorRun?: () => string | null;
-}
+import type { PaymentScanState } from "./payments.js";
 
 export interface FakeFacilitator {
   getSupported(): Promise<unknown>;
@@ -42,11 +39,6 @@ export interface FakeFacilitator {
   settle(): Promise<unknown>;
 }
 
-/**
- * Local facilitator that only advertises the exact/eip155:196 kind so the
- * middleware can issue 402 challenges. verify/settle always fail, so no
- * payment is ever accepted while OKX keys are absent.
- */
 export function challengeOnlyFacilitator(network: string): FakeFacilitator {
   return {
     async getSupported() {
@@ -71,47 +63,35 @@ export function challengeOnlyFacilitator(network: string): FakeFacilitator {
   };
 }
 
-const daysSchema = z.coerce.number().int().min(1).max(30).default(7);
-const whaleQuerySchema = z.object({
-  minUsd: z.coerce.number().min(0).default(100000),
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-});
-const holderQuerySchema = z.object({
-  token: z.string().regex(/^0x[0-9a-fA-F]{40}$/, "token must be a 0x 40-hex address"),
-});
-const alertBodySchema = z.object({
-  webhookUrl: z.string().url().refine((u) => u.startsWith("https://"), {
-    message: "webhookUrl must be https",
-  }),
-  minUsd: z.number().min(100000),
-  days: z.number().int().min(1).max(30).default(30),
-});
-
-function buildRoutes(network: string, payTo: string): RoutesConfig {
-  const net = network as `${string}:${string}`;
-  const routes: Record<string, RouteConfig> = {};
-  for (const m of ALL_ENDPOINTS) {
-    routes[`${m.method} ${m.path}`] = {
-      accepts: [
-        {
-          scheme: "exact",
-          network: net,
-          payTo,
-          price: `$${m.priceUsd.toFixed(2)}`,
-        },
-      ],
-      description: m.description,
-      mimeType: "application/json",
-    };
-  }
-  return routes;
+export interface AppDeps {
+  env: {
+    NETWORK: string;
+    PAY_TO: string;
+    PUBLIC_API_BASE_URL: string;
+    WEB_ORIGIN: string;
+  };
+  checkDeps: CheckDeps;
+  facilitator?: { apiKey: string; secretKey: string; passphrase: string } | FakeFacilitator;
+  syncFacilitatorOnStart?: boolean;
+  okxConfigured?: boolean;
+  payments?: () => PaymentScanState;
 }
+
+const startedAt = Date.now();
+
+interface StatusCache {
+  at: number;
+  body: unknown;
+}
+let statusCache: StatusCache | null = null;
+const STATUS_TTL_MS = 30_000;
+
 
 export function createApp(deps: AppDeps): Express {
   const app = express();
   app.use(express.json());
   app.use((req: Request, res: Response, next: NextFunction) => {
-    res.setHeader("access-control-allow-origin", "*");
+    res.setHeader("access-control-allow-origin", deps.env.WEB_ORIGIN);
     res.setHeader("access-control-allow-methods", "GET, POST, OPTIONS");
     res.setHeader("access-control-allow-headers", "content-type, payment-signature, x-payment");
     res.setHeader("access-control-expose-headers", "PAYMENT-REQUIRED, PAYMENT-RESPONSE");
@@ -126,61 +106,138 @@ export function createApp(deps: AppDeps): Express {
     next();
   });
 
-  app.get("/health", async (_req, res) => {
-    let dbStatus: "ok" | "error" = "ok";
-    try {
-      await deps.repo.ping();
-    } catch {
-      dbStatus = "error";
-    }
-    res.status(dbStatus === "ok" ? 200 : 503).json({
-      status: dbStatus === "ok" ? "ok" : "error",
+  app.get("/health", (_req, res) => {
+    const market = isNyseOpen(new Date());
+    res.json({
+      status: "ok",
       chainId: CHAIN_ID,
       network: deps.env.NETWORK,
-      db: dbStatus,
-      lastCollectorRun: deps.lastCollectorRun?.() ?? null,
-      collectorEnabled: deps.env.COLLECTOR_ENABLED,
+      payTo: deps.env.PAY_TO,
+      okxConfigured: deps.okxConfigured ?? false,
+      marketOpen: market.open,
+      uptime: Math.floor((Date.now() - startedAt) / 1000),
     });
   });
 
   app.get("/catalog", (_req, res) => {
-    const base = deps.env.PUBLIC_API_BASE_URL.replace(/\/$/, "");
+    res.json(buildCatalog(deps.env.PUBLIC_API_BASE_URL, deps.env.NETWORK));
+  });
+
+  app.get("/status", async (_req, res) => {
+    if (statusCache && Date.now() - statusCache.at < STATUS_TTL_MS) {
+      res.json(statusCache.body);
+      return;
+    }
+    const now = new Date();
+    const market = isNyseOpen(now);
+    const tokens = await Promise.all(
+      XSTOCKS.map(async (t) => {
+        const [stock, ticker, mult] = await Promise.allSettled([
+          deps.checkDeps.stockPrice(t.redstoneId),
+          deps.checkDeps.okxTicker(t.okxInstId),
+          deps.checkDeps.multiplier(t.wrapper),
+        ]);
+        return {
+          ticker: t.ticker,
+          realStock: stock.status === "fulfilled" ? stock.value.price : null,
+          stockPriceAsOf:
+            stock.status === "fulfilled"
+              ? new Date(stock.value.asOf).toISOString()
+              : null,
+          okxExchange: ticker.status === "fulfilled" ? ticker.value.last : null,
+          okxTs:
+            ticker.status === "fulfilled"
+              ? new Date(ticker.value.ts).toISOString()
+              : null,
+          multiplier: mult.status === "fulfilled" ? mult.value : null,
+        };
+      }),
+    );
+    const body = {
+      marketOpen: market.open,
+      marketReason: market.reason,
+      nextChange: market.nextChange,
+      tokens,
+      updatedAt: now.toISOString(),
+    };
+    statusCache = { at: Date.now(), body };
+    res.json(body);
+  });
+
+  app.get("/payments/recent", (req, res) => {
+    const limit = Math.min(Number(req.query.limit ?? 20) || 20, 50);
+    const snap = deps.payments?.() ?? {
+      warming: false,
+      scannedFrom: null,
+      lastScanned: null,
+      payments: [],
+    };
+    const dayAgo = Date.now() - 86_400_000;
+    const recent = snap.payments.filter((p) => p.timestamp >= dayAgo);
     res.json({
-      network: deps.env.NETWORK,
-      chainId: CHAIN_ID,
-      payTo: deps.env.PAY_TO_ADDRESS,
-      paymentScheme: "x402 exact",
-      asset: `USDT0 (${USDT0_ADDRESS})`,
-      whaleAlertEventShape: WHALE_ALERT_EVENT_SHAPE,
-      endpoints: ALL_ENDPOINTS.map((m) => ({
-        id: m.id,
-        name: m.name,
-        description: m.description,
-        unit: m.unit,
-        priceUsd: m.priceUsd,
-        method: m.method,
-        url: `${base}${m.path}`,
-        params: m.params,
-        okxSource: m.okxSource,
-        computeNote: m.computeNote,
-      })),
+      payTo: deps.env.PAY_TO,
+      count24h: recent.length,
+      totalUsd24h:
+        Math.round(recent.reduce((s, p) => s + p.amountUsd, 0) * 100) / 100,
+      warming: snap.warming,
+      scannedFrom: snap.scannedFrom,
+      lastScanned: snap.lastScanned,
+      payments: snap.payments.slice(0, limit),
     });
   });
 
-  if (!deps.paymentsDisabled) {
+  // --- POST /check: validate -> pay -> run ---
+
+  // Stage 1: schema validation BEFORE payment so unpaid callers get a useful 400.
+  app.post("/check", (req: Request, res: Response, next: NextFunction) => {
+    const b = req.body as Record<string, unknown> | undefined;
+    const missing = CHECK_INPUT_FIELDS.filter((f) => b?.[f] === undefined);
+    if (missing.length > 0) {
+      res.status(400).json({
+        ...INPUT_REQUIRED,
+        missing,
+      });
+      return;
+    }
+    const parsed = validateCheckRequest(b);
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+    next();
+  });
+
+  // Stage 2: payment middleware for the paid route only.
+  {
     const usingRealFacilitator = Boolean(
       deps.facilitator && "apiKey" in deps.facilitator,
     );
     const facilitator = usingRealFacilitator
-      ? new OKXFacilitatorClient(
-          deps.facilitator as { apiKey: string; secretKey: string; passphrase: string },
-        )
+      ? new OKXFacilitatorClient({
+          ...(deps.facilitator as {
+            apiKey: string;
+            secretKey: string;
+            passphrase: string;
+          }),
+          syncSettle: true,
+        })
       : ((deps.facilitator as FakeFacilitator | undefined) ??
         challengeOnlyFacilitator(deps.env.NETWORK));
     const server = new x402ResourceServer(
       facilitator as unknown as ConstructorParameters<typeof x402ResourceServer>[0],
     ).register(deps.env.NETWORK as `${string}:${string}`, new ExactEvmScheme());
-    const sync = deps.syncFacilitatorOnStart ?? true;
+    server.onAfterSettle(async (ctx) => {
+      const r = ctx.result as {
+        transaction?: string;
+        payer?: string;
+        amount?: string;
+      };
+      log("info", "payment settled", {
+        txHash: r.transaction,
+        payer: r.payer,
+        amount: r.amount,
+      });
+    });
     if (!usingRealFacilitator) {
       log("warn", "payments cannot be verified; 402 challenges still issued", {
         job: "x402",
@@ -188,84 +245,90 @@ export function createApp(deps: AppDeps): Express {
     }
     app.use(
       paymentMiddleware(
-        buildRoutes(deps.env.NETWORK, deps.env.PAY_TO_ADDRESS),
+        {
+          "POST /check": {
+            accepts: [
+              {
+                scheme: "exact",
+                network: deps.env.NETWORK as `${string}:${string}`,
+                payTo: deps.env.PAY_TO as `0x${string}`,
+                price: `$${PRICE_USD}`,
+              },
+            ],
+            description: "xStock pre-trade check on X Layer",
+            mimeType: "application/json",
+          },
+        },
         server,
         undefined,
         undefined,
-        sync,
+        deps.syncFacilitatorOnStart ?? true,
       ),
     );
   }
 
-  const badRequest = (res: Response, error: z.ZodError | string) => {
-    res.status(400).json({
-      error: typeof error === "string" ? error : "invalid parameters",
-      details: typeof error === "string" ? undefined : error.issues,
-    });
-  };
-  const dataError = (res: Response, err: unknown) => {
-    log("error", "data-layer error", { job: "handler", err: String(err) });
-    res.status(503).json({ error: "data unavailable" });
-  };
-
-  for (const m of METRIC_CATALOG) {
-    if (m.id === "whale-transfers" || m.id === "holder-concentration") continue;
-    app.get(m.path, async (req, res) => {
-      const parsed = daysSchema.safeParse(req.query.days);
-      if (!parsed.success) return badRequest(res, parsed.error);
-      try {
-        res.json(await deps.repo.getDailySeries(m.id, parsed.data));
-      } catch (err) {
-        dataError(res, err);
-      }
-    });
-  }
-
-  app.get("/v1/metrics/whale-transfers", async (req, res) => {
-    const parsed = whaleQuerySchema.safeParse(req.query);
-    if (!parsed.success) return badRequest(res, parsed.error);
-    try {
-      res.json(await deps.repo.getWhaleTransfers(parsed.data));
-    } catch (err) {
-      dataError(res, err);
+  // Stage 3: the handler itself.
+  app.post("/check", async (req: Request, res: Response) => {
+    if (!deps.okxConfigured) {
+      res.status(503).json({ error: "data sources not configured" });
+      return;
     }
-  });
-
-  app.get("/v1/metrics/holder-concentration", async (req, res) => {
-    const parsed = holderQuerySchema.safeParse(req.query);
-    if (!parsed.success) return badRequest(res, parsed.error);
-    try {
-      res.json(await deps.repo.getHolderConcentration(parsed.data.token));
-    } catch (err) {
-      dataError(res, err);
+    const parsed = validateCheckRequest(req.body);
+    if (!parsed.ok) {
+      res.status(400).json({ error: parsed.error });
+      return;
     }
-  });
-
-  app.post("/v1/alerts/subscribe", async (req, res) => {
-    const parsed = alertBodySchema.safeParse(req.body);
-    if (!parsed.success) return badRequest(res, parsed.error);
     try {
-      const expiresAt = new Date(
-        Date.now() + parsed.data.days * 86_400_000,
-      );
-      const created = await deps.repo.createAlert({
-        webhookUrl: parsed.data.webhookUrl,
-        minUsd: parsed.data.minUsd,
-        expiresAt,
+      const body = await runCheck(deps.checkDeps, parsed.value as CheckRequest);
+      res.json(body);
+    } catch (err) {
+      log("error", "check failed", { err: String(err) });
+      res.status(503).json({
+        error: "check unavailable",
+        detail: err instanceof Error ? err.message : String(err),
       });
-      res.json({ ...created, eventShape: WHALE_ALERT_EVENT_SHAPE });
-    } catch (err) {
-      dataError(res, err);
-    }
-  });
-
-  app.get("/v1/snapshot", async (_req, res) => {
-    try {
-      res.json(await deps.repo.getSnapshot());
-    } catch (err) {
-      dataError(res, err);
     }
   });
 
   return app;
+}
+
+export interface LiveSources {
+  okx: OkxClient;
+  chain: import("@kwyh/core").XLayerClient;
+  tokenDecimals: Map<string, number>;
+}
+
+export async function makeLiveCheckDeps(s: LiveSources): Promise<CheckDeps> {
+  for (const t of XSTOCKS) {
+    try {
+      const meta = await readTokenMeta(s.chain, t.wrapper);
+      t.decimals = meta.decimals;
+      s.tokenDecimals.set(t.wrapper.toLowerCase(), meta.decimals);
+      log("info", "token meta", {
+        ticker: t.ticker,
+        symbol: meta.symbol,
+        decimals: meta.decimals,
+      });
+    } catch (err) {
+      log("warn", "token meta read failed", {
+        ticker: t.ticker,
+        err: String(err),
+      });
+    }
+  }
+  return {
+    stockPrice: (id) => getStockPrice(id),
+    okxTicker: (inst) => getOkxTicker(inst),
+    xlayerPrice: (w) => getXLayerPrice(s.okx, w),
+    multiplier: (w) => getMultiplier(s.chain, w as `0x${string}`),
+    tokenDecimals: async (w) => {
+      const hit = s.tokenDecimals.get(w.toLowerCase());
+      if (hit !== undefined) return hit;
+      const meta = await readTokenMeta(s.chain, w as `0x${string}`);
+      s.tokenDecimals.set(w.toLowerCase(), meta.decimals);
+      return meta.decimals;
+    },
+    dexQuote: (opts) => dexQuote(s.okx, opts),
+  };
 }

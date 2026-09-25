@@ -1,0 +1,21 @@
+{
+  "name": "@kwyh/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@redstone-finance/sdk": "^1.0.0",
+    "viem": "^2.56.9"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

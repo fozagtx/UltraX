@@ -1,48 +1,38 @@
 services:
   - type: web
-    name: ultrax-api
+    name: kwyh-api
     runtime: node
     region: singapore
     plan: starter
-    buildCommand: npm ci && npm run build -w packages/metrics && npm run build -w apps/api
+    buildCommand: npm ci && npm run build -w packages/core && npm run build -w apps/api
     startCommand: npm run start -w apps/api
     healthCheckPath: /health
     envVars:
-      - key: DATABASE_URL
-        fromDatabase: { name: ultrax-db, property: connectionString }
       - key: NETWORK
         value: eip155:196
       - key: XLAYER_RPC_URL
         value: https://rpc.xlayer.tech
+      - key: XLAYER_RPC_URL_BACKUP
+        value: https://xlayerrpc.okx.com
       - key: PUBLIC_API_BASE_URL
-        value: https://ultrax-api.onrender.com
+        value: https://kwyh-api.onrender.com
+      - key: PAY_TO
+        sync: false
       - key: OKX_API_KEY
         sync: false
       - key: OKX_SECRET_KEY
         sync: false
       - key: OKX_PASSPHRASE
         sync: false
-      - key: PAY_TO_ADDRESS
-        sync: false
   - type: web
-    name: ultrax-web
+    name: kwyh-web
     runtime: node
     region: singapore
     plan: starter
-    buildCommand: npm ci && npm run build -w packages/metrics && npm run build -w apps/web
+    buildCommand: npm ci && npm run build -w packages/core && npm run build -w apps/web
     startCommand: npm run start -w apps/web
     envVars:
-      - key: DATABASE_URL
-        fromDatabase: { name: ultrax-db, property: connectionString }
+      - key: API_BASE_URL
+        value: https://kwyh-api.onrender.com
       - key: NEXT_PUBLIC_API_BASE_URL
-        value: https://ultrax-api.onrender.com
-      - key: OKX_API_KEY
-        sync: false
-      - key: OKX_SECRET_KEY
-        sync: false
-      - key: OKX_PASSPHRASE
-        sync: false
-databases:
-  - name: ultrax-db
-    region: singapore
-    plan: basic-256mb
+        value: https://kwyh-api.onrender.com

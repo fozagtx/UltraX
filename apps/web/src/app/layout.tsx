@@ -9,8 +9,9 @@ const mono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ULTRA X — X Layer analytics",
-  description: "On-chain analytics for X Layer (chain ID 196)",
+  title: "Know What You Hold — xStock pre-trade checks on X Layer",
+  description:
+    "A paid safety check agents call before trading tokenized stocks on X Layer",
 };
 
 export default function RootLayout({
