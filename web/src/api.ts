@@ -1,56 +1,66 @@
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080").replace(/\/$/, "");
 
+export type Period = "daily" | "weekly" | "monthly";
+
 export interface Health {
   status: string;
-  chainId: number;
+  service: string;
   network: string;
   payTo: string;
-  okxConfigured: boolean;
-  marketOpen: boolean;
+  paymentsConfigured: boolean;
+  universe: {
+    ready: boolean;
+    perps: number;
+    spots: number;
+    preIpo: number;
+    candlesRefreshedAt: string | null;
+    tickersRefreshedAt: string | null;
+  };
+  usMarketOpen: boolean;
   uptime: number;
 }
 
-export interface StatusToken {
-  ticker: string;
-  realStock: number | null;
-  stockPriceAsOf: string | null;
-  okxExchange: number | null;
-  okxTs: string | null;
-  multiplier: number | null;
+export interface PreviewRunner {
+  symbol: string;
+  last: number;
+  returnPct: number;
+  preIpo: boolean;
 }
 
-export interface Status {
-  marketOpen: boolean;
-  marketReason: string;
-  nextChange: string | null;
-  tokens: StatusToken[];
+export interface PreviewPreIpo {
+  symbol: string;
+  company: string | null;
+  last: number | null;
+  change24hPct: number | null;
+  impliedValuationUsd: number | null;
+}
+
+export interface CalibrationSummary {
+  hitRate: number | null;
+  samples: number;
+  baseUpRate: number | null;
+}
+
+export interface Preview {
   updatedAt: string;
+  usMarket: { open: boolean; reason: string; nextChange: string | null };
+  runners: Record<Period, PreviewRunner[]>;
+  preIpo: PreviewPreIpo[];
+  model: { name: string; calibration: Partial<Record<Period, CalibrationSummary>> };
 }
 
-export interface CatalogToken {
-  ticker: string;
-  wrapper: string;
-  raw: string;
-  okxInstId: string;
-  redstoneId: string;
+export interface CatalogEndpoint {
+  method: string;
+  path: string;
+  priceUsd: number;
+  description: string;
 }
 
 export interface Catalog {
   name: string;
-  serviceName: string;
-  network: string;
-  chainId: number;
-  fee: string;
-  asset: string;
-  explorer: string;
-  serviceDescription: string;
-  inputRequired: { example: { ticker: string; side: string; sizeUSD: number } };
-  tokens: CatalogToken[];
-  verdictRules: { verdict: string; condition: string }[];
-  rights: Record<string, { type: string; voting: boolean; dividends: string; redemption: string; restricted: string[] }>;
-  restricted: string[];
+  tagline: string;
+  endpoints: { paid: CatalogEndpoint[]; free: string[] };
   disclaimer: string;
-  endpoints: { free: string[]; paid: string[] };
 }
 
 export interface Payment {
@@ -78,6 +88,6 @@ async function get<T>(path: string): Promise<T> {
 }
 
 export const fetchHealth = () => get<Health>("/health");
-export const fetchStatus = () => get<Status>("/status");
+export const fetchPreview = () => get<Preview>("/preview");
 export const fetchCatalog = () => get<Catalog>("/catalog");
 export const fetchPayments = () => get<Payments>("/payments/recent?limit=10");

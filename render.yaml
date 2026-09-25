@@ -1,10 +1,10 @@
 services:
   - type: web
-    name: kwyh-web
+    name: ultrax-web
     runtime: static
     rootDir: web
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
     envVars:
       - key: VITE_API_BASE_URL
-        value: https://<hf-user>-know-what-you-hold.hf.space
+        value: https://<hf-user>-ultrax.hf.space

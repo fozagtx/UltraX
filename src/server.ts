@@ -344,6 +344,9 @@ export function createApp(deps: AppDeps): Express {
           validation.value.symbol,
           validation.value.period,
           (instId) => deps.universe.positioning(instId),
+          deps.universe.orderBook
+            ? (instId) => deps.universe.orderBook!(instId)
+            : undefined,
         ),
       );
     } catch (error) {

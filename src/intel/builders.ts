@@ -403,6 +403,7 @@ export async function buildSignal(
   symbol: string,
   period: Period,
   getPositioning: (instId: string) => Promise<Positioning>,
+  fetchBook?: (instId: string) => Promise<OrderBook | null>,
 ) {
   const resolved = resolveSymbol(symbol, snapshot);
   if (!resolved) throw new Error(`unknown symbol: ${symbol}`);
@@ -538,10 +539,7 @@ export async function buildSignal(
       : {}),
     ...(instrument.preIpo
       ? {
-          preIpo: await buildPreIpoContract(
-            snapshot,
-            instrument,
-          ),
+          preIpo: await buildPreIpoContract(snapshot, instrument, fetchBook),
         }
       : {}),
     disclaimer: DISCLAIMER,
