@@ -304,7 +304,7 @@
   -d '${exampleBody}'`}</pre>
     {#if catalog}
       <table class="endpoints-table">
-        <thead><tr><th>Endpoint</th><th>What it returns</th><th class="r">Price</th></tr></thead>
+        <thead><tr><th>Endpoint</th><th class="desc">What it returns</th><th class="r">Price</th></tr></thead>
         <tbody>
           {#each catalog.endpoints.paid as e (e.path)}
             <tr>
@@ -923,6 +923,10 @@
   .endpoints-table .desc {
     color: var(--ink-2);
     padding-right: 16px;
+  }
+  #runners td + td,
+  #runners th + th {
+    padding-left: 12px;
   }
   .nowrap {
     white-space: nowrap;
