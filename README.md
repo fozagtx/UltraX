@@ -27,6 +27,26 @@ SDK). The service is listed on OKX AI as an A2MCP service. All market data comes
 live from OKX's public v5 market API, and the universe is discovered from OKX's
 instrument list, so newly listed stocks appear automatically.
 
+## Live deployment
+
+| Component            | URL                                                    |
+| -------------------- | ------------------------------------------------------ |
+| API (HF Docker Space) | https://pima5-ultrax.hf.space                          |
+| Space repo            | https://huggingface.co/spaces/pima5/ultrax             |
+| Status page (Render)  | https://ultrax-web.onrender.com                        |
+| Source                | https://github.com/fozagtx/UltraX                      |
+
+Settlement: `eip155:196` (X Layer mainnet), asset USDT0
+`0x779ded0c9e1022225f8e0630b35a9b54be713736`, receiving wallet
+`0xfd5e5c8b94dd46913e2a0cf556f16d09be317341` (OKX Agentic Wallet).
+
+```bash
+curl -s https://pima5-ultrax.hf.space/health
+curl -i -X POST https://pima5-ultrax.hf.space/runners \
+  -H 'content-type: application/json' -d '{"period":"weekly"}'
+# HTTP/2 402 + PAYMENT-REQUIRED header (base64 x402 v2 challenge)
+```
+
 ## How it works
 
 ```
@@ -152,12 +172,81 @@ curl -i -X POST https://<your-domain>/runners -H 'content-type: application/json
 ### Deploy on Hugging Face
 
 The repo is a Docker Space. The front-matter at the top of this README and the
-`Dockerfile` are all Hugging Face needs. Add these secrets: `PAY_TO`,
-`OKX_API_KEY`, `OKX_SECRET_KEY` and `OKX_PASSPHRASE`. Set `PUBLIC_API_BASE_URL`
-to the Space URL. The server listens on port 7860.
+`Dockerfile` are all Hugging Face needs. The server listens on port 7860 and
+trusts the Space's TLS proxy, so the x402 challenge advertises the `https://`
+resource URL that the OKX.AI marketplace validates.
 
-Then register each paid endpoint as an A2MCP ASP with Onchain OS, following
-[How to Register as an ASP](https://web3.okx.com/onchainos/dev-docs/okxai/registerasp).
+```bash
+hf auth login                                   # write-scoped token
+hf repos create <user>/ultrax --type space --space-sdk docker --public
+hf spaces secrets add <user>/ultrax -s PAY_TO=0x<your X Layer wallet>
+hf spaces variables add <user>/ultrax -e NETWORK=eip155:196 \
+  -e PUBLIC_API_BASE_URL=https://<user>-ultrax.hf.space -e WEB_ORIGIN='*'
+hf upload <user>/ultrax . . --repo-type space \
+  --exclude 'node_modules/**' --exclude 'dist/**' --exclude '.git/**' \
+  --exclude 'web/**' --exclude 'apps/**' --exclude '.env*'
+hf spaces wait <user>/ultrax
+```
+
+Without OKX API credentials the server still issues 402 challenges, but it
+cannot verify or settle payments (`/health` reports `paymentsConfigured: false`
+and a paying agent gets an error). For a real listing you need a key from the
+[OKX Developer Portal](https://web3.okx.com/onchainos/dev-portal):
+
+1. Connect a wallet and **Verify** (signature only, no gas).
+2. **Get started**: link email and phone, confirm both codes.
+3. **Create API key**: choose a name and a passphrase (the passphrase cannot be
+   recovered later).
+4. **View details** to read the API key and the generated secret key.
+
+```bash
+hf spaces secrets add <user>/ultrax -s OKX_API_KEY=... -s OKX_SECRET_KEY=... \
+  -s OKX_PASSPHRASE=...
+hf spaces restart <user>/ultrax
+curl -s https://<user>-ultrax.hf.space/health   # paymentsConfigured: true
+```
+
+### List on OKX.AI (A2MCP)
+
+Listing is done from your agent with Onchain OS, following
+[How to Register as an ASP](https://web3.okx.com/onchainos/dev-docs/okxai/registerasp)
+and the [A2MCP guide](https://web3.okx.com/onchainos/dev-docs/okxai/howtomcp).
+
+```bash
+npx -y @okxweb3/onchainos-installer install
+onchainos wallet login            # Agentic Wallet; its X Layer address is PAY_TO
+onchainos agent pre-check --role asp
+```
+
+Register one ASP identity (name, description, square PNG/JPEG avatar) with one
+service per paid endpoint. Endpoints must be public `https://` URLs; fees are
+digits only, in USDT:
+
+| Service                          | Fee   | Endpoint                                 |
+| -------------------------------- | ----- | ---------------------------------------- |
+| OKX Stock Runners Ranking        | 0.01  | `https://pima5-ultrax.hf.space/runners`  |
+| OKX Stock Signal Report          | 0.005 | `https://pima5-ultrax.hf.space/signal`   |
+| OKX Pre-IPO Contract Intelligence | 0.01 | `https://pima5-ultrax.hf.space/preipo`   |
+
+Then activate the identity (`onchainos agent activate`). Review completes within
+24 hours and the result is emailed to the Agentic Wallet address. Once live,
+every call is billed and settled by the OKX Payment SDK with no manual steps.
+Registration and activation are free; OKX covers network fees.
+
+Before registering, self-check every paid endpoint returns `402` with a
+`PAYMENT-REQUIRED` header when given valid input (invalid input is a `400`
+before payment, by design) and every free endpoint returns `200`:
+
+```bash
+API=https://pima5-ultrax.hf.space
+curl -s -o /dev/null -w "runners %{http_code}\n" -X POST $API/runners \
+  -H 'content-type: application/json' -d '{"period":"weekly"}'
+curl -s -o /dev/null -w "signal  %{http_code}\n" -X POST $API/signal \
+  -H 'content-type: application/json' -d '{"symbol":"NVDA"}'
+curl -s -o /dev/null -w "preipo  %{http_code}\n" -X POST $API/preipo \
+  -H 'content-type: application/json' -d '{"symbol":"OPENAI"}'
+# all three: 402
+```
 
 ## Status page (free)
 
@@ -170,7 +259,10 @@ cd web && npm ci
 VITE_API_BASE_URL=http://localhost:8080 npm run dev   # http://localhost:5173
 ```
 
-`render.yaml` deploys it as a Render static site.
+`render.yaml` deploys it as a Render static site at
+https://ultrax-web.onrender.com with `VITE_API_BASE_URL` set to the Space URL.
+The variable is baked in at build time, so changing the API URL requires a
+Render redeploy.
 
 ## Disclaimer
 
