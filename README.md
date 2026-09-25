@@ -151,8 +151,6 @@ Environment: copy `.env.example` to `apps/api/.env` and fill in:
 - `OKX_API_KEY` / `OKX_SECRET_KEY` / `OKX_PASSPHRASE` — OKX Web3 API credentials.
   Without them the 402 challenge still works, but `/check` and the X Layer parts
   of `/status` are degraded.
-- `DEMO_AGENT_PRIVATE_KEY` — for the paid demo agent path, a wallet funded with
-  a little USDT0 and OKB on X Layer.
 
 Run locally:
 
@@ -173,16 +171,6 @@ curl -i -X POST http://localhost:8080/check -H 'content-type: application/json' 
 # -> 402 Payment Required with X Layer payment details
 ```
 
-## Demo agent
-
-A small agent that pays for a check before trading and changes its action based
-on the verdict:
-
-```bash
-npm run demo -w agent -- --ticker NVDAx --side sell --size 500 --dry   # no wallet needed
-npm run demo -w agent -- --ticker NVDAx --side sell --size 500         # paid, uses @okxweb3/x402-fetch
-```
-
 ## Repo layout
 
 ```
@@ -191,7 +179,6 @@ packages/core   @kwyh/core        tokens, rights, NYSE hours, formulas, verdict
 apps/api        @kwyh/api         Express: /health /catalog /status
                                   /payments/recent, POST /check, smoke.ts
 apps/web        @kwyh/web         Next.js landing (/) and /docs
-agent           @kwyh/demo-agent  demo-agent.ts (x402-fetch paid path)
 docs/           PRD-know-what-you-hold.md
 render.yaml     Render blueprint: kwyh-api + kwyh-web (Singapore)
 ```
