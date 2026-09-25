@@ -16,8 +16,7 @@ Send a stock token and a trade size (`sell $500 of NVDAx`); get back one verdict
 Each check costs **0.005 USDT**, paid in USDT0 on X Layer via the x402 payment
 protocol. Every paid call is a visible on-chain transaction.
 
-Built for OKX Dev Day (Remote Build route, Build a Company track) as an A2MCP
-service on OKX AI.
+Available on OKX AI as an A2MCP service.
 
 ## Why
 
@@ -135,67 +134,10 @@ on X Layer (`eip155:196`; testnet `eip155:1952`).
 | 5 | RedStone `redstone-primary-prod` | Real stock price (median of 3 signers) |
 | 6 | X Layer RPC                 | Wrapper `convertToAssets` multiplier  |
 
-## Setup
-
-Requires Node.js >= 20.
-
-```bash
-npm ci
-npm run build
-npm test
-```
-
-Environment: copy `.env.example` to `apps/api/.env` and fill in:
-
-- `PAY_TO` — wallet address that receives x402 payments (required)
-- `OKX_API_KEY` / `OKX_SECRET_KEY` / `OKX_PASSPHRASE` — OKX Web3 API credentials.
-  Without them the 402 challenge still works, but `/check` and the X Layer parts
-  of `/status` are degraded.
-
-Run locally:
-
-```bash
-npm run dev -w apps/api     # API on :8080
-npm run dev -w apps/web     # landing + docs (needs API_BASE_URL, NEXT_PUBLIC_API_BASE_URL)
-npm run smoke -w apps/api   # live check of RedStone, OKX ticker and RPC multiplier
-```
-
-Verify payment behavior:
-
-```bash
-curl -i -X POST http://localhost:8080/check -H 'content-type: application/json' -d '{}'
-# -> 400 with the input schema
-
-curl -i -X POST http://localhost:8080/check -H 'content-type: application/json' \
-  -d '{"ticker":"NVDAx","side":"sell","sizeUSD":500}'
-# -> 402 Payment Required with X Layer payment details
-```
-
-## Repo layout
-
-```
-packages/core   @kwyh/core        tokens, rights, NYSE hours, formulas, verdict
-                                  rules, data sources, runCheck, catalog
-apps/api        @kwyh/api         Express: /health /catalog /status
-                                  /payments/recent, POST /check, smoke.ts
-apps/web        @kwyh/web         Next.js landing (/) and /docs
-docs/           PRD-know-what-you-hold.md
-render.yaml     Render blueprint: kwyh-api + kwyh-web (Singapore)
-```
-
-## Deployment
-
-`render.yaml` defines a Render Blueprint with two services: `kwyh-api` and
-`kwyh-web` (Node, Singapore). Secret env vars (`PAY_TO`, `OKX_API_KEY`,
-`OKX_SECRET_KEY`, `OKX_PASSPHRASE`) are marked `sync: false` and set in the
-Render dashboard. The API exposes `/health` as the health check path.
-
 ## OKX AI listing
 
-The service registers on OKX AI as an A2MCP tool named **xStock Pre-Trade
-Check** (fee 0.005, endpoint `POST /check`). See
-`docs/PRD-know-what-you-hold.md` for the registration flow and the exact
-service description.
+Listed on OKX AI as an A2MCP service: **xStock Pre-Trade Check**, fee 0.005
+USDT per call, endpoint `POST /check`.
 
 ## Restricted regions
 
