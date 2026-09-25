@@ -10,7 +10,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().default(8080),
   PUBLIC_API_BASE_URL: z.string().default("http://localhost:8080"),
   WEB_ORIGIN: z.string().default("*"),
-  OKX_BASE_URL: z.string().default("https://web3.okx.com"),
+  OKX_REST_BASE: z.string().default("https://www.okx.com"),
   OKX_API_KEY: z.string().optional(),
   OKX_SECRET_KEY: z.string().optional(),
   OKX_PASSPHRASE: z.string().optional(),

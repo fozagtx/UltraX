@@ -1,63 +1,48 @@
-import {
-  getMultiplier,
-  getOkxTicker,
-  getStockPrice,
-  isNyseOpen,
-  makeXLayerClient,
-  readTokenMeta,
-  XSTOCKS,
-} from "./core/index.js";
-
-const rpcUrls = [
-  process.env.XLAYER_RPC_URL ?? "https://rpc.xlayer.tech",
-  process.env.XLAYER_RPC_URL_BACKUP ?? "https://xlayerrpc.okx.com",
-];
+import { buildPreIpo, buildRunners, buildSignal } from "./intel/builders.js";
+import { UniverseService } from "./intel/universe.js";
+import { OkxClient } from "./okx/client.js";
 
 async function main() {
-  const chain = makeXLayerClient(rpcUrls);
-  const market = isNyseOpen(new Date());
-  console.log(
-    `market: open=${market.open} reason=${market.reason} nextChange=${market.nextChange}`,
+  const universe = new UniverseService(
+    new OkxClient(process.env.OKX_REST_BASE ?? "https://www.okx.com"),
   );
-  console.log(
-    "ticker  redstone            as-of                    okx-last    symbol  dec  multiplier",
-  );
-  for (const t of XSTOCKS) {
-    let stock = "err";
-    let asOf = "-";
-    try {
-      const s = await getStockPrice(t.redstoneId);
-      stock = s.price.toFixed(4);
-      asOf = new Date(s.asOf).toISOString();
-    } catch (e) {
-      stock = `ERR ${(e as Error).message.slice(0, 40)}`;
-    }
-    let okx = "err";
-    try {
-      const k = await getOkxTicker(t.okxInstId);
-      okx = k.last.toFixed(4);
-    } catch (e) {
-      okx = `ERR ${(e as Error).message.slice(0, 40)}`;
-    }
-    let symbol = "?";
-    let dec = "?";
-    let mult = "err";
-    try {
-      const meta = await readTokenMeta(chain, t.wrapper);
-      symbol = meta.symbol;
-      dec = String(meta.decimals);
-      const m = await getMultiplier(chain, t.wrapper);
-      mult = m.toFixed(6);
-    } catch (e) {
-      mult = `ERR ${(e as Error).message.slice(0, 60)}`;
-    }
+  await universe.refresh();
+  const snapshot = universe.snapshot();
+  if (!snapshot) throw new Error("universe did not become ready");
+
+  console.log("universe", JSON.stringify(universe.status()));
+  console.log("calibration", JSON.stringify(snapshot.calibrations, null, 2));
+  for (const period of ["daily", "weekly", "monthly"] as const) {
+    const response = buildRunners(snapshot, {
+      period,
+      market: "perp",
+      direction: "up",
+      limit: 5,
+      minVolumeUsd: 100_000,
+    });
     console.log(
-      `${t.ticker.padEnd(8)}${stock.padEnd(20)}${asOf.padEnd(25)}${okx.padEnd(12)}${symbol.padEnd(8)}${dec.padEnd(5)}${mult}`,
+      `top ${period} runners`,
+      JSON.stringify(response.runners, null, 2),
     );
   }
+  for (const symbol of ["NVDA", "ANTHROPIC"]) {
+    const response = await buildSignal(
+      snapshot,
+      symbol,
+      "weekly",
+      (instId) => universe.positioning(instId),
+    );
+    console.log(`signal ${symbol}`, JSON.stringify(response, null, 2));
+  }
+  const preIpo = await buildPreIpo(
+    snapshot,
+    undefined,
+    (instId) => universe.orderBook(instId),
+  );
+  console.log("pre-IPO table", JSON.stringify(preIpo, null, 2));
 }
 
-main().catch((e) => {
-  console.error("smoke failed:", e);
+main().catch((error) => {
+  console.error("smoke failed:", error);
   process.exit(1);
 });
