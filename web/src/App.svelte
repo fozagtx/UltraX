@@ -898,6 +898,15 @@
   .mini h3 {
     font-size: 18px;
   }
+  .mini header > div {
+    min-width: 0;
+  }
+  .mini header .mono {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   .mini .big {
     font-size: 30px;
   }
