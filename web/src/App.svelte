@@ -12,6 +12,7 @@
     type Period,
     type Preview,
   } from "./api";
+  import Logo from "./Logo.svelte";
 
   let health = $state<Health | null>(null);
   let preview = $state<Preview | null>(null);
@@ -131,25 +132,21 @@
   );
 </script>
 
-<div class="strip">
-  Free teaser from <code>GET /preview</code>. Scores, probabilities and positioning are paid — this page
-  never calls a paid endpoint.
-</div>
-
-<header class="nav">
+<div class="frame">
+<header class="topbar">
   <a class="brand" href="/">
-    <span class="mark"></span>
-    UltraX
+    <span class="mark" aria-hidden="true"></span>
+    <span>ultra<span class="dim">x</span></span>
   </a>
   <nav class="links">
     <a href="#runners">Runners</a>
     <a href="#preipo">Pre-IPO</a>
     <a href="#api">API</a>
     <a href="#payments">Payments</a>
-    <a href={`${API_BASE}/catalog`} target="_blank" rel="noreferrer">Catalog</a>
+    <a href={`${API_BASE}/catalog`} target="_blank" rel="noreferrer">Catalog <span class="arrow">↗</span></a>
   </nav>
   <div class="actions">
-    <span class="dot-status" class:live={health?.status === "ok"} class:down={error && !health}>
+    <span class="kbd status" class:live={health?.status === "ok"} class:down={error && !health}>
       <i></i>
       {#if health}
         {health.network} · up {uptime(health.uptime)}
@@ -159,10 +156,7 @@
         connecting
       {/if}
     </span>
-    <a class="btn" href="https://web3.okx.com/ai/marketplace" target="_blank" rel="noreferrer">
-      Open on OKX AI
-    </a>
-    <button class="theme" onclick={toggleTheme} aria-label="Toggle dark mode" title="Toggle dark mode">
+    <button class="icon-btn" onclick={toggleTheme} aria-label="Toggle dark mode" title="Toggle dark mode">
       {#if dark}
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
       {:else}
@@ -174,81 +168,84 @@
 
 <main>
   <section class="hero">
-    <div class="pill">OKX AI · A2MCP agent service · x402 on X Layer</div>
-    <h1>Predictive intelligence<br class="desktop" /> for stocks on OKX.</h1>
-    <p class="sub">
-      Daily, weekly and monthly runners, per-stock signals and pre-IPO intelligence across every
-      stock perpetual and xStock listed on OKX. Agents pay per call in <strong>USDT0</strong> and get
-      calibrated scores, up-probabilities, positioning and valuation data.
-    </p>
-    <div class="hero-meta">
-      <span class="chip" class:open={preview?.usMarket.open} class:closed={preview && !preview.usMarket.open}>
-        <i></i>
-        {#if preview}
-          US market {preview.usMarket.open ? "open" : "closed"}
-          {#if preview.usMarket.nextChange} · {preview.usMarket.open ? "closes" : "opens"} {new Date(preview.usMarket.nextChange).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" })}{/if}
-        {:else}
-          Market status…
+    <div class="hero-copy">
+      <span class="eyebrow">OKX AI · A2MCP agent service · x402 on X Layer</span>
+      <h1>Predictive intelligence for stocks on OKX.</h1>
+      <p class="sub">
+        Daily, weekly and monthly runners, per-stock signals and pre-IPO intelligence across every
+        stock perpetual and xStock listed on OKX. Agents pay per call in <strong>USDT0</strong> and get
+        calibrated scores, up-probabilities, positioning and valuation data.
+      </p>
+      <div class="hero-meta">
+        <span class="chip" class:open={preview?.usMarket.open} class:closed={preview && !preview.usMarket.open}>
+          <i></i>
+          {#if preview}
+            US market {preview.usMarket.open ? "open" : "closed"}
+            {#if preview.usMarket.nextChange} · {preview.usMarket.open ? "closes" : "opens"} {new Date(preview.usMarket.nextChange).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" })}{/if}
+          {:else}
+            Market status…
+          {/if}
+        </span>
+        {#if lastRefresh}
+          <span class="chip muted">refreshed {ago(lastRefresh.getTime())}</span>
         {/if}
-      </span>
-      <span class="chip">
-        <i class="okx" class:on={health?.universe.ready}></i>
-        {#if health?.universe.ready}
-          {health.universe.perps} stock perps · {health.universe.spots} xStocks · {health.universe.preIpo} pre-IPO
-        {:else if health}
-          Universe warming up…
-        {:else}
-          OKX universe…
-        {/if}
-      </span>
-      {#if lastRefresh}
-        <span class="chip muted">refreshed {ago(lastRefresh.getTime())}</span>
+      </div>
+      {#if error}
+        <p class="error">{error}</p>
       {/if}
     </div>
-    {#if error}
-      <p class="error">{error}</p>
-    {/if}
+    <aside class="promo">
+      <div class="promo-head">
+        <span class="promo-title">Universe</span>
+        <span class="label accent">Live · OKX v5</span>
+      </div>
+      <dl class="counts">
+        <div><dt>Stock perps</dt><dd>{health?.universe.ready ? health.universe.perps : "—"}</dd></div>
+        <div><dt>xStocks</dt><dd>{health?.universe.ready ? health.universe.spots : "—"}</dd></div>
+        <div><dt>Pre-IPO</dt><dd>{health?.universe.ready ? health.universe.preIpo : "—"}</dd></div>
+      </dl>
+      <a class="promo-link" href="https://web3.okx.com/ai/marketplace" target="_blank" rel="noreferrer">Open on OKX AI <span class="arrow">↗</span></a>
+    </aside>
   </section>
 
-  <section id="runners" class="card wide">
-    <header class="row">
-      <div>
-        <h2>Top runners</h2>
-        <p class="lead">Biggest movers among OKX stock perpetuals with at least $100K 24h volume.</p>
-      </div>
+  <section id="runners" class="block">
+    <header class="block-head">
+      <span class="num">01</span>
+      <h2>Top runners</h2>
+      <p class="lead">Biggest movers among OKX stock perps with at least $100K 24h volume.</p>
       <div class="seg" role="tablist" aria-label="Runner period">
         {#each PERIODS as p (p.key)}
           <button role="tab" aria-selected={period === p.key} class:on={period === p.key} onclick={() => (period = p.key)}>
             {p.label}
+            <span class="count">{preview?.runners[p.key]?.length ?? 0}</span>
           </button>
         {/each}
       </div>
     </header>
     {#if runners.length}
-      <table>
-        <thead><tr><th>#</th><th>Symbol</th><th class="r">Last</th><th class="r">Return</th></tr></thead>
-        <tbody>
-          {#each runners as r, i (r.symbol)}
-            <tr>
-              <td class="rank">{i + 1}</td>
-              <td>
-                <span class="sym">{r.symbol}</span>
-                {#if r.preIpo}<span class="badge">Pre-IPO</span>{/if}
-              </td>
-              <td class="r">{price(r.last)}</td>
-              <td class="r strong" style:color={pctColor(r.returnPct)}>{fmtPct(r.returnPct)}</td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
+      <ol class="list">
+        {#each runners as r, i (r.symbol)}
+          <li class="item runner">
+            <span class="rank mono">{String(i + 1).padStart(2, "0")}</span>
+            <Logo symbol={r.symbol} listed={!r.preIpo} />
+            <span class="name">{r.symbol}</span>
+            <span class="sep">·</span>
+            <span class="meta">
+              {#if r.preIpo}<span class="badge">Pre-IPO</span>{:else}<span class="mono">{r.symbol}-USDT-SWAP</span>{/if}
+            </span>
+            <span class="price mono">{price(r.last)}</span>
+            <span class="ret" style:color={pctColor(r.returnPct)}>{fmtPct(r.returnPct)}</span>
+          </li>
+        {/each}
+      </ol>
     {:else if preview}
       <p class="empty">No runners for this period yet.</p>
     {:else}
       <p class="empty">Loading runners…</p>
     {/if}
     <div class="calib">
-      <span class="tiny">Model <span class="mono">{preview?.model.name ?? "ultrax-momentum-v1"}</span> · walk-forward backtest on OKX history</span>
-      <span class="tiny">
+      <span>Model <span class="mono">{preview?.model.name ?? "ultrax-momentum-v1"}</span> · walk-forward backtest on OKX history</span>
+      <span>
         {#if cal}
           hit rate <strong>{rate(cal.hitRate)}</strong> · base up-rate {rate(cal.baseUpRate)} · {cal.samples.toLocaleString("en-US")} samples
         {:else}
@@ -258,30 +255,26 @@
     </div>
   </section>
 
-  <section id="preipo" class="card wide">
-    <header class="row">
-      <div>
-        <h2>Pre-IPO contracts</h2>
-        <p class="lead">
-          Cash-settled perpetuals tracking private-company valuations. No shares, votes or IPO allocation.
-        </p>
-      </div>
+  <section id="preipo" class="block">
+    <header class="block-head">
+      <span class="num">02</span>
+      <h2>Pre-IPO contracts</h2>
+      <p class="lead">Cash-settled perps tracking private-company valuations. No shares, votes or IPO allocation.</p>
     </header>
     {#if preview && preview.preIpo.length}
-      <div class="grid preipo">
+      <div class="grid">
         {#each preview.preIpo as c (c.symbol)}
-          <article class="mini">
+          <article class="tile">
             <header>
-              <div>
+              <Logo symbol={c.symbol} size={28} listed={false} />
+              <div class="tile-name">
                 <h3>{c.company ?? c.symbol}</h3>
-                <span class="tiny mono">{c.symbol}-USDT-SWAP</span>
+                <span class="mono">{c.symbol}-USDT-SWAP</span>
               </div>
-              <span class="gap" style:color={pctColor(c.change24hPct)}>{fmtPct(c.change24hPct)}</span>
+              <span class="delta" style:color={pctColor(c.change24hPct)}>{fmtPct(c.change24hPct)}</span>
             </header>
             <div class="big">{price(c.last)}</div>
-            <dl>
-              <div><dt>Implied valuation</dt><dd>{compactUsd(c.impliedValuationUsd)}</dd></div>
-            </dl>
+            <div class="kv"><span>Implied valuation</span><strong>{compactUsd(c.impliedValuationUsd)}</strong></div>
           </article>
         {/each}
       </div>
@@ -292,71 +285,71 @@
     {/if}
   </section>
 
-  <section id="api" class="card wide code">
-    <h2>Call it from your agent</h2>
-    <p class="lead">
-      Unpaid requests answer <code>402</code> with a <code>PAYMENT-REQUIRED</code> header; x402-aware
-      clients pay and retry automatically. Missing inputs answer <code>400 input_required</code> before
-      any payment.
-    </p>
+  <section id="api" class="block">
+    <header class="block-head">
+      <span class="num">03</span>
+      <h2>Call it from your agent</h2>
+      <p class="lead">
+        Unpaid requests answer <code>402</code> with a <code>PAYMENT-REQUIRED</code> header; missing inputs answer
+        <code>400 input_required</code> before any payment.
+      </p>
+    </header>
     <pre>{`curl -s -X POST ${API_BASE}/runners \\
   -H 'content-type: application/json' \\
   -d '${exampleBody}'`}</pre>
     {#if catalog}
-      <table class="endpoints-table">
-        <thead><tr><th>Endpoint</th><th class="desc">What it returns</th><th class="r">Price</th></tr></thead>
-        <tbody>
-          {#each catalog.endpoints.paid as e (e.path)}
-            <tr>
-              <td class="mono nowrap">{e.method} {e.path}</td>
-              <td class="desc">{e.description}</td>
-              <td class="r nowrap">{e.priceUsd} USDT0</td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-      <div class="endpoints">
+      <ul class="list">
+        {#each catalog.endpoints.paid as e (e.path)}
+          <li class="item endpoint">
+            <span class="verb mono">{e.method}</span>
+            <span class="name mono">{e.path}</span>
+            <span class="sep desc">·</span>
+            <span class="meta desc">{e.description}</span>
+            <span class="price-pill">{e.priceUsd} USDT0</span>
+          </li>
+        {/each}
+      </ul>
+      <div class="tags">
+        <span class="label">Free</span>
         {#each catalog.endpoints.free as e (e)}
-          <span class="tag free">{e}</span>
+          <span class="kbd">{e}</span>
         {/each}
       </div>
     {/if}
   </section>
 
-  <section id="payments" class="card wide">
-    <header class="row">
-      <div>
-        <h2>Service payments</h2>
-        <p class="lead">USDT0 received by the service wallet on X Layer.</p>
-      </div>
+  <section id="payments" class="block">
+    <header class="block-head">
+      <span class="num">04</span>
+      <h2>Service payments</h2>
+      <p class="lead">USDT0 received by the service wallet on X Layer.</p>
       <div class="stats">
-        <div><span class="n">{payments?.count24h ?? "—"}</span><span class="tiny">calls / 24h</span></div>
-        <div><span class="n">{payments ? usd(payments.totalUsd24h, 3) : "—"}</span><span class="tiny">earned / 24h</span></div>
+        <span class="kbd"><strong>{payments?.count24h ?? "—"}</strong> calls / 24h</span>
+        <span class="kbd"><strong>{payments ? usd(payments.totalUsd24h, 3) : "—"}</strong> earned / 24h</span>
       </div>
     </header>
     {#if payments?.warming}
-      <p class="tiny">Scanner is warming up — history is still being indexed.</p>
+      <p class="empty">Scanner is warming up — history is still being indexed.</p>
     {/if}
     {#if payments && payments.payments.length}
-      <table>
-        <thead><tr><th>When</th><th>From</th><th>Amount</th><th>Tx</th></tr></thead>
-        <tbody>
-          {#each payments.payments as p (p.txHash)}
-            <tr>
-              <td>{ago(p.timestamp)}</td>
-              <td class="mono">{short(p.from)}</td>
-              <td>{usd(p.amountUsd, 3)}</td>
-              <td><a class="mono" href={`${EXPLORER}/tx/${p.txHash}`} target="_blank" rel="noreferrer">{short(p.txHash)}</a></td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
+      <ul class="list">
+        {#each payments.payments as p (p.txHash)}
+          <li class="item pay">
+            <span class="rank mono">{ago(p.timestamp)}</span>
+            <span class="name mono">{short(p.from)}</span>
+            <span class="sep">·</span>
+            <a class="meta mono" href={`${EXPLORER}/tx/${p.txHash}`} target="_blank" rel="noreferrer">{short(p.txHash)} ↗</a>
+            <span class="ret">{usd(p.amountUsd, 3)}</span>
+          </li>
+        {/each}
+      </ul>
     {:else if payments}
       <p class="empty">No payments in the current scan window yet.</p>
     {/if}
     {#if payments?.payTo}
-      <p class="tiny">
-        Pay-to <a class="mono" href={`${EXPLORER}/address/${payments.payTo}`} target="_blank" rel="noreferrer">{payments.payTo}</a>
+      <p class="payto">
+        <span class="label">Pay-to</span>
+        <a class="mono" href={`${EXPLORER}/address/${payments.payTo}`} target="_blank" rel="noreferrer">{payments.payTo}</a>
       </p>
     {/if}
   </section>
@@ -364,154 +357,159 @@
 
 <footer>
   <span>{catalog?.disclaimer ?? "Information only, not investment advice."}</span>
-  <span>Data: OKX public market API · updated {ago(preview?.updatedAt)}</span>
+  <span class="mono">Data: OKX public market API · updated {ago(preview?.updatedAt)}</span>
 </footer>
+</div>
 
 <style>
-  .strip {
-    background: var(--ink);
-    color: var(--bg);
-    text-align: center;
-    font-size: 12px;
-    padding: 8px 16px;
-  }
-  .strip code {
-    opacity: 0.8;
+  .frame {
+    max-width: 1040px;
+    margin: 0 auto;
+    min-height: 100vh;
+    border-left: 1px dashed var(--dash);
+    border-right: 1px dashed var(--dash);
   }
 
-  .nav {
-    max-width: 1120px;
-    margin: 0 auto;
-    padding: 20px 24px 0;
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
+    padding: 12px 24px;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px dashed var(--dash);
   }
   .brand {
     display: flex;
     align-items: center;
     gap: 10px;
-    font-weight: 600;
+    font-family: var(--display);
+    font-size: 18px;
     letter-spacing: -0.01em;
   }
+  .brand .dim {
+    color: var(--ink-3);
+  }
   .mark {
-    width: 18px;
-    height: 18px;
-    border-radius: 6px;
-    background: var(--ink);
-    box-shadow: inset 0 0 0 5px var(--bg);
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 30% 30%, #9fd3ff 0 18%, transparent 19%),
+      conic-gradient(from 200deg, #1f7aa8, #6c8cff, #b8e1ff, #1f7aa8);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
   }
   .links {
     display: flex;
-    gap: 4px;
-    padding: 4px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.55);
-    border: 1px solid var(--line);
-    backdrop-filter: blur(8px);
-  }
-  :global([data-theme="dark"]) .links {
-    background: rgba(255, 255, 255, 0.05);
+    gap: 2px;
   }
   .links a {
-    padding: 6px 12px;
-    border-radius: 999px;
+    padding: 5px 10px;
+    border-radius: 8px;
     font-size: 13px;
     color: var(--ink-2);
-    transition: background 0.2s, color 0.2s;
+    transition: background-color 0.15s ease, color 0.15s ease;
   }
   .links a:hover {
-    background: var(--panel);
+    background: var(--panel-soft);
     color: var(--ink);
+  }
+  .arrow {
+    color: var(--ink-3);
+    font-size: 11px;
   }
   .actions {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
   }
-  .dot-status {
+  .kbd {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    font-size: 12px;
+    gap: 6px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: var(--panel-soft);
+    box-shadow: inset 0 0 0 1px var(--line);
+    font-family: var(--mono);
+    font-size: 11.5px;
     color: var(--ink-2);
+    white-space: nowrap;
   }
-  .dot-status i {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
+  .kbd strong {
+    color: var(--ink);
+    font-weight: 500;
+  }
+  .status i,
+  .chip i {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
     background: var(--ink-3);
   }
-  .dot-status.live i {
+  .status.live i,
+  .chip.open i {
     background: var(--ok);
-    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.18);
   }
-  .dot-status.down i {
+  .status.down i {
     background: var(--stop);
   }
-  .btn {
-    background: var(--ink);
-    color: var(--bg);
-    padding: 9px 16px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 500;
-    transition: transform 0.2s ease, opacity 0.2s;
+  .chip.closed i {
+    background: var(--caution);
   }
-  .btn:hover {
-    transform: translateY(-1px);
-    opacity: 0.9;
-  }
-  .theme {
-    width: 34px;
-    height: 34px;
+  .icon-btn {
     display: grid;
     place-items: center;
-    border-radius: 50%;
-    border: 1px solid var(--line);
-    background: var(--panel);
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--ink-2);
     cursor: pointer;
   }
-
-  main {
-    max-width: 1120px;
-    margin: 0 auto;
-    padding: 0 24px 64px;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
+  .icon-btn:hover {
+    background: var(--panel-soft);
+    color: var(--ink);
   }
 
   .hero {
-    text-align: center;
-    padding: 88px 0 48px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 18px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: 32px;
+    align-items: start;
+    padding: 48px 24px 40px;
+    border-bottom: 1px dashed var(--dash);
   }
-  .pill {
-    font-size: 12px;
-    padding: 6px 12px;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: var(--panel);
-    color: var(--ink-2);
+  .eyebrow,
+  .label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .label.accent {
+    color: var(--accent);
   }
   h1 {
-    font-size: clamp(38px, 6vw, 68px);
-    line-height: 1.02;
-    letter-spacing: -0.035em;
-    font-weight: 600;
-    margin: 0;
+    margin: 14px 0 12px;
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: clamp(32px, 5vw, 48px);
+    line-height: 1.04;
+    letter-spacing: -0.03em;
+    max-width: 14ch;
   }
   .sub {
-    max-width: 620px;
     margin: 0;
+    max-width: 56ch;
     color: var(--ink-2);
-    font-size: 17px;
-    line-height: 1.5;
+    font-size: 15px;
   }
   .sub strong {
     color: var(--ink);
@@ -520,423 +518,388 @@
   .hero-meta {
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
     gap: 8px;
-    margin-top: 6px;
+    margin-top: 20px;
   }
   .chip {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-size: 13px;
-    padding: 8px 14px;
-    border-radius: 999px;
-    background: var(--panel);
-    border: 1px solid var(--line);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    padding: 5px 10px;
+    border-radius: 8px;
+    box-shadow: inset 0 0 0 1px var(--line);
+    font-size: 12.5px;
+    color: var(--ink-2);
   }
   .chip.muted {
     color: var(--ink-3);
   }
-  .chip i {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--ink-3);
-  }
-  .chip.open i {
-    background: var(--ok);
-  }
-  .chip.closed i {
-    background: var(--caution);
-  }
-  .chip i.okx.on {
-    background: var(--ok);
-  }
   .error {
+    margin: 14px 0 0;
     color: var(--stop);
     font-size: 13px;
-    margin: 0;
   }
 
-  .grid {
+  .promo {
+    padding: 16px 18px;
+    border-radius: 14px;
+    background: var(--tint);
+  }
+  .promo-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .promo-title {
+    font-weight: 600;
+  }
+  .counts {
     display: grid;
-    gap: 20px;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 14px 0;
   }
-  @media (max-width: 860px) {
-    .links {
-      display: none;
-    }
+  .counts div {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 2px;
   }
-  @media (max-width: 640px) {
-    .strip {
-      font-size: 11px;
-      padding: 8px 12px;
-    }
-    .nav {
-      padding: 14px 16px 0;
-      gap: 10px;
-    }
-    .brand {
-      font-size: 14px;
-      white-space: nowrap;
-    }
-    .dot-status {
-      font-size: 0;
-    }
-    .dot-status i {
-      width: 9px;
-      height: 9px;
-    }
-    .btn {
-      padding: 8px 12px;
-      font-size: 12px;
-      white-space: nowrap;
-    }
-    .actions {
-      gap: 8px;
-    }
-    main {
-      padding: 0 16px 48px;
-      gap: 14px;
-    }
-    .hero {
-      padding: 48px 0 28px;
-      gap: 14px;
-    }
-    .desktop {
-      display: none;
-    }
-    .sub {
-      font-size: 15px;
-    }
-    .chip {
-      font-size: 12px;
-      padding: 7px 12px;
-    }
-    .card {
-      padding: 20px;
-      border-radius: 18px;
-    }
-    .card:hover {
-      transform: none;
-    }
-    .big {
-      font-size: 34px;
-    }
-    .wide .row {
-      flex-direction: column;
-      gap: 14px;
-    }
-    .stats {
-      width: 100%;
-      justify-content: flex-start;
-    }
-    .stats div {
-      align-items: flex-start;
-    }
-    .n {
-      font-size: 24px;
-    }
-    table {
-      display: block;
-      overflow-x: auto;
-      white-space: nowrap;
-      font-size: 12px;
-    }
-    td,
-    th {
-      padding-right: 14px;
-    }
-    pre {
-      font-size: 12px;
-      padding: 14px;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-    footer {
-      padding: 0 16px 32px;
-      flex-direction: column;
-    }
+  .counts dt {
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .counts dd {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 26px;
+    letter-spacing: -0.02em;
+  }
+  .promo-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .promo-link .arrow {
+    color: inherit;
   }
 
-  .card {
-    background: var(--panel);
-    border-radius: var(--radius);
-    border: 1px solid var(--line);
-    box-shadow: var(--shadow);
-    padding: 28px;
-    transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s;
+  .block {
+    padding: 28px 24px 32px;
+    border-bottom: 1px dashed var(--dash);
   }
-  .card:hover {
-    transform: translateY(-2px);
+  .block-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 10px;
+    margin-bottom: 14px;
   }
-  .card h2 {
-    margin: 0 0 4px;
-    font-size: 20px;
-    letter-spacing: -0.02em;
-    font-weight: 600;
+  .num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-3);
   }
-  .card h3 {
+  h2 {
     margin: 0;
-    font-size: 22px;
-    letter-spacing: -0.02em;
-    font-weight: 600;
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 17px;
+    letter-spacing: -0.01em;
   }
   .lead {
-    margin: 0 0 18px;
-    color: var(--ink-3);
-    font-size: 14px;
-  }
-  .tiny {
-    font-size: 12px;
-    color: var(--ink-3);
-  }
-
-  .big {
-    font-size: 40px;
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
-  dl {
-    margin: 22px 0 0;
-    display: grid;
-    gap: 10px;
-  }
-  dl div {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    font-size: 13px;
-    padding-top: 10px;
-    border-top: 1px solid var(--line);
-  }
-  dt {
-    color: var(--ink-3);
-  }
-  dd {
+    flex: 1 1 280px;
     margin: 0;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-
-
-  .wide .row {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 24px;
-    flex-wrap: wrap;
-  }
-  .stats {
-    display: flex;
-    gap: 28px;
-  }
-  .stats div {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-  }
-  .n {
-    font-size: 28px;
-    font-weight: 600;
-    letter-spacing: -0.03em;
-    font-variant-numeric: tabular-nums;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-    margin-top: 8px;
-  }
-  th {
-    text-align: left;
-    font-weight: 500;
     color: var(--ink-3);
-    font-size: 12px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--line);
+    font-size: 13.5px;
   }
-  td {
-    padding: 12px 0;
-    border-bottom: 1px solid var(--line);
-    font-variant-numeric: tabular-nums;
-  }
-  td a:hover {
-    text-decoration: underline;
-  }
-  .empty {
-    margin: 8px 0 0;
-    padding: 28px;
-    text-align: center;
-    color: var(--ink-3);
-    background: var(--panel-soft);
-    border-radius: 14px;
-    font-size: 14px;
-  }
-  .wide .tiny {
-    margin: 14px 0 0;
-    word-break: break-all;
+  .lead code {
+    color: var(--ink-2);
   }
 
-  pre {
-    margin: 0 0 16px;
-    padding: 18px 20px;
-    border-radius: 14px;
-    background: var(--ink);
-    color: var(--bg);
-    font-size: 13px;
-    line-height: 1.55;
-    overflow-x: auto;
-  }
-  .endpoints {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-  .tag {
-    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 12px;
-    padding: 5px 10px;
-    border-radius: 999px;
-    background: var(--panel-soft);
-    border: 1px solid var(--line);
-  }
-
-  footer {
-    max-width: 1120px;
-    margin: 0 auto;
-    padding: 0 24px 40px;
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--ink-3);
-  }
-
-  #runners,
-  #preipo,
-  #api {
-    margin-bottom: 20px;
-  }
   .seg {
-    display: inline-flex;
-    padding: 4px;
+    display: flex;
     gap: 2px;
-    border-radius: 999px;
-    background: var(--panel-soft);
-    border: 1px solid var(--line);
+    align-self: center;
   }
   .seg button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
     border: 0;
+    border-radius: 8px;
     background: transparent;
-    padding: 7px 14px;
-    border-radius: 999px;
     font-size: 13px;
     color: var(--ink-2);
     cursor: pointer;
-    transition: background 0.2s, color 0.2s;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+  }
+  .seg button:hover {
+    color: var(--ink);
   }
   .seg button.on {
     background: var(--panel);
     color: var(--ink);
-    box-shadow: 0 1px 2px rgba(15, 17, 22, 0.08);
+    font-weight: 500;
+    box-shadow: var(--shadow);
   }
-  .r {
-    text-align: right;
-  }
-  .strong {
-    font-weight: 600;
-  }
-  .rank {
-    width: 36px;
+  .count {
+    font-family: var(--mono);
+    font-size: 10.5px;
     color: var(--ink-3);
   }
-  .sym {
+
+  .list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    padding: 6px 8px;
+    margin: 0 -8px;
+    border-radius: 10px;
+    transition: background-color 0.15s ease;
+  }
+  .item:hover {
+    background: var(--panel-soft);
+  }
+  .rank {
+    width: 22px;
+    color: var(--ink-3);
+    font-size: 11px;
+  }
+  .pay .rank {
+    width: 64px;
+  }
+  .name {
     font-weight: 600;
+    white-space: nowrap;
+  }
+  .sep {
+    color: var(--ink-3);
+  }
+  .meta {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ink-3);
+    font-size: 13px;
+  }
+  .meta.mono {
+    font-size: 11.5px;
+  }
+  a.meta:hover {
+    color: var(--ink);
   }
   .badge {
-    margin-left: 8px;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    padding: 3px 8px;
-    border-radius: 999px;
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--caution) 14%, transparent);
     color: var(--caution);
-    background: color-mix(in srgb, var(--caution) 12%, transparent);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .price {
+    color: var(--ink-2);
+    font-size: 12.5px;
+  }
+  .ret {
+    width: 76px;
+    text-align: right;
+    font-weight: 600;
   }
   .calib {
     display: flex;
-    justify-content: space-between;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 16px;
-  }
-  .calib .tiny {
-    margin: 0;
-  }
-  .preipo {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  }
-  .mini {
-    padding: 20px;
-    border-radius: 16px;
-    background: var(--panel-soft);
-    border: 1px solid var(--line);
-  }
-  .mini header {
-    display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 16px;
+    gap: 6px 16px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--dash);
+    font-size: 12px;
+    color: var(--ink-3);
   }
-  .mini h3 {
-    font-size: 18px;
+  .calib strong {
+    color: var(--ink);
+    font-weight: 600;
   }
-  .mini header > div {
+  .empty {
+    margin: 8px 0;
+    color: var(--ink-3);
+    font-size: 13px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+  }
+  .tile {
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: var(--panel-soft);
+    box-shadow: inset 0 0 0 1px var(--line);
+    transition: box-shadow 0.15s ease, background-color 0.15s ease;
+  }
+  .tile:hover {
+    background: var(--panel);
+    box-shadow: var(--shadow);
+  }
+  .tile header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .tile-name {
+    flex: 1;
     min-width: 0;
   }
-  .mini header .mono {
+  .tile-name .mono {
     display: block;
-    white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ink-3);
+    font-size: 10.5px;
   }
-  .mini .big {
-    font-size: 30px;
+  h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
   }
-  .mini .gap {
+  .delta {
     font-size: 12px;
     font-weight: 600;
-    padding: 3px 8px;
-    border-radius: 999px;
-    background: var(--panel);
   }
-  .endpoints-table {
-    margin-bottom: 16px;
+  .big {
+    margin: 14px 0 10px;
+    font-family: var(--display);
+    font-size: 28px;
+    letter-spacing: -0.02em;
   }
-  .endpoints-table .desc {
-    color: var(--ink-2);
-    padding-right: 16px;
+  .kv {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 10px;
+    border-top: 1px dashed var(--dash);
+    font-size: 12.5px;
+    color: var(--ink-3);
   }
-  #runners td + td,
-  #payments td + td,
-  #payments th + th,
-  #runners th + th {
-    padding-left: 12px;
+  .kv strong {
+    color: var(--ink);
+    font-weight: 600;
   }
-  .nowrap {
+
+  pre {
+    margin: 0 0 14px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: var(--panel-soft);
+    box-shadow: inset 0 0 0 1px var(--line);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+  .verb {
+    width: 38px;
+    font-size: 10.5px;
+    color: var(--accent);
+  }
+  .endpoint .name {
+    font-weight: 500;
+    font-size: 12.5px;
+  }
+  .price-pill {
+    margin-left: auto;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: var(--tint);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 11.5px;
     white-space: nowrap;
-    padding-right: 16px;
   }
-  @media (max-width: 640px) {
-    .endpoints-table .desc {
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 14px;
+  }
+  .tags .label {
+    margin-right: 4px;
+  }
+  .stats {
+    display: flex;
+    gap: 6px;
+    align-self: center;
+  }
+  .payto {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: 14px 0 0;
+    font-size: 12px;
+    color: var(--ink-2);
+    word-break: break-all;
+  }
+  .payto a:hover {
+    color: var(--ink);
+  }
+
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px 16px;
+    padding: 20px 24px 28px;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+
+  @media (max-width: 820px) {
+    .hero {
+      grid-template-columns: 1fr;
+    }
+    .links {
       display: none;
+    }
+  }
+  @media (max-width: 560px) {
+    .topbar,
+    .hero,
+    .block,
+    footer {
+      padding-left: 16px;
+      padding-right: 16px;
+    }
+    .hero {
+      padding-top: 32px;
+    }
+    .desc,
+    .runner .sep,
+    .runner .meta .mono {
+      display: none;
+    }
+    .seg {
+      width: 100%;
+    }
+    .seg button {
+      flex: 1;
+      justify-content: center;
+    }
+    .item .meta {
+      font-size: 11px;
     }
   }
 </style>
