@@ -36,6 +36,12 @@ services:
         fromDatabase: { name: ultrax-db, property: connectionString }
       - key: NEXT_PUBLIC_API_BASE_URL
         value: https://ultrax-api.onrender.com
+      - key: OKX_API_KEY
+        sync: false
+      - key: OKX_SECRET_KEY
+        sync: false
+      - key: OKX_PASSPHRASE
+        sync: false
 databases:
   - name: ultrax-db
     region: singapore

@@ -1,0 +1,28 @@
+{
+  "name": "@ultrax/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ultrax/metrics": "*",
+    "next": "^15.5.0",
+    "pg": "^8.23.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "recharts": "^3.1.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/node": "^25.0.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

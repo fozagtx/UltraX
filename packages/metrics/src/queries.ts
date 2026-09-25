@@ -25,6 +25,21 @@ const SERIES_METRICS = [
 
 type SeriesMetricId = (typeof SERIES_METRICS)[number];
 
+const STABLECOIN_METRICS = new Set<string>([
+  "stablecoin-volume",
+  "stablecoin-netflow",
+]);
+
+// Earliest timestamp covered by the transfers table; daily rows whose UTC
+// day starts before this are only partially covered by the indexer.
+async function getCoverageStartMs(db: Db): Promise<number | null> {
+  const rows = await db.execute<{ min_ts: string | null }>(
+    sql`select min(ts) as min_ts from transfers`,
+  );
+  const v = rows.rows[0]?.min_ts;
+  return v ? new Date(v).getTime() : null;
+}
+
 function metricMeta(metricId: string) {
   const m = METRIC_CATALOG.find((x) => x.id === metricId);
   if (!m) throw new Error(`unknown metric: ${metricId}`);
@@ -53,6 +68,7 @@ export async function getDailySeries(
   chainId: number;
   unit: string;
   updatedAt: string | null;
+  coverageStart: string | null;
   series: SeriesPoint[];
 }> {
   const meta = metricMeta(metricId);
@@ -60,8 +76,23 @@ export async function getDailySeries(
   const today = utcToday();
   let series: SeriesPoint[] = [];
   let updatedAt: Date | null = null;
+  let coverageStart: string | null = null;
 
-  if (metricId === "stablecoin-volume" || metricId === "stablecoin-netflow") {
+  if (STABLECOIN_METRICS.has(metricId)) {
+    const coverageStartMs = await getCoverageStartMs(db);
+    coverageStart = coverageStartMs
+      ? new Date(coverageStartMs).toISOString()
+      : null;
+    const partialFlags = (r: { date: string }): Partial<SeriesPoint> => {
+      if (r.date === today)
+        return { partial: true, partialReason: "today" };
+      if (
+        coverageStartMs !== null &&
+        Date.parse(`${r.date}T00:00:00Z`) < coverageStartMs
+      )
+        return { partial: true, partialReason: "coverage" };
+      return {};
+    };
     const rows = await db
       .select()
       .from(dailyStablecoin)
@@ -81,7 +112,7 @@ export async function getDailySeries(
       mintUsd: num(r.mintUsd),
       burnUsd: num(r.burnUsd),
       transferCount: r.transferCount,
-      ...(r.date === today ? { partial: true } : {}),
+      ...partialFlags(r),
     }));
   } else {
     const rows = await db
@@ -131,6 +162,7 @@ export async function getDailySeries(
     chainId: CHAIN_ID,
     unit: meta.unit,
     updatedAt: updatedAt ? updatedAt.toISOString() : null,
+    coverageStart,
     series,
   };
 }
@@ -167,14 +199,21 @@ async function latestAndPrev(
 ): Promise<{
   latest: number | null;
   latestDate: string | null;
+  latestPartial: boolean;
   prev7: number | null;
   prev7Date: string | null;
 }> {
+  const empty = {
+    latest: null,
+    latestDate: null,
+    latestPartial: false,
+    prev7: null,
+    prev7Date: null,
+  };
   const yesterday = utcDayOffset(1);
-  const table =
-    metricId === "stablecoin-volume" || metricId === "stablecoin-netflow"
-      ? dailyStablecoin
-      : dailyStats;
+  const isStablecoin = STABLECOIN_METRICS.has(metricId);
+  const table = isStablecoin ? dailyStablecoin : dailyStats;
+  const coverageStartMs = isStablecoin ? await getCoverageStartMs(db) : null;
   const val = (r: Record<string, unknown>): number | null => {
     if (metricId === "new-addresses") return num(r.newAddresses);
     if (metricId === "tx-count") return num(r.txCount);
@@ -187,10 +226,22 @@ async function latestAndPrev(
     .from(table)
     .where(lte(table.date, yesterday))
     .orderBy(desc(table.date))
-    .limit(1);
-  if (rows.length === 0)
-    return { latest: null, latestDate: null, prev7: null, prev7Date: null };
-  const latestRow = rows[0] as Record<string, unknown>;
+    .limit(60);
+  if (rows.length === 0) return empty;
+  let latestRow = rows[0] as Record<string, unknown>;
+  let latestPartial = false;
+  if (isStablecoin && coverageStartMs !== null) {
+    const complete = rows.find(
+      (r) =>
+        Date.parse(`${String((r as Record<string, unknown>).date)}T00:00:00Z`) >=
+        coverageStartMs,
+    );
+    if (complete) {
+      latestRow = complete as Record<string, unknown>;
+    } else {
+      latestPartial = true;
+    }
+  }
   const latestDate = String(latestRow.date);
   const prev7Date = new Date(
     Date.parse(`${latestDate}T00:00:00Z`) - 7 * 86_400_000,
@@ -205,6 +256,7 @@ async function latestAndPrev(
   return {
     latest: val(latestRow),
     latestDate,
+    latestPartial,
     prev7: prevRows.length ? val(prevRows[0] as Record<string, unknown>) : null,
     prev7Date: prevRows.length ? prev7Date : null,
   };
@@ -216,16 +268,21 @@ export async function getSnapshot(db: Db): Promise<Record<string, unknown>> {
   let newest: Date | null = null;
   let asOfDate: string | null = null;
   for (const id of SERIES_METRICS) {
-    const { latest, latestDate, prev7 } = await latestAndPrev(db, id);
+    const { latest, latestDate, latestPartial, prev7 } = await latestAndPrev(
+      db,
+      id,
+    );
     metrics[id] = {
       latest,
       asOfDate: latestDate,
+      partial: latestPartial,
       change7dPct:
         latest !== null && prev7 !== null ? pctChange(latest, prev7) : null,
     };
     if (latestDate && (!asOfDate || latestDate > asOfDate))
       asOfDate = latestDate;
   }
+  const coverageStartMs = await getCoverageStartMs(db);
   const whales = await getWhaleTransfers(db, {
     minUsd: WHALE_MIN_USD,
     limit: 1,
@@ -250,6 +307,9 @@ export async function getSnapshot(db: Db): Promise<Record<string, unknown>> {
   out.chain = "xlayer";
   out.chainId = CHAIN_ID;
   out.asOfDate = asOfDate;
+  out.coverageStart = coverageStartMs
+    ? new Date(coverageStartMs).toISOString()
+    : null;
   out.updatedAt = newest ? newest.toISOString() : null;
   return out;
 }
@@ -258,13 +318,12 @@ export async function getKpis(db: Db): Promise<Record<string, unknown>> {
   const metrics: Record<string, unknown> = {};
   let asOfDate: string | null = null;
   for (const id of SERIES_METRICS) {
-    const { latest, latestDate, prev7, prev7Date } = await latestAndPrev(
-      db,
-      id,
-    );
+    const { latest, latestDate, latestPartial, prev7, prev7Date } =
+      await latestAndPrev(db, id);
     metrics[id] = {
       latest,
       asOfDate: latestDate,
+      partial: latestPartial,
       previous7dAgo: prev7,
       prev7Date,
       change7dPct:
@@ -289,6 +348,27 @@ export async function getRecentTransfers(
     .select()
     .from(transfers)
     .orderBy(desc(transfers.ts))
+    .limit(limit);
+  return rows.map((r) => ({
+    txHash: r.txHash,
+    token: r.token,
+    from: r.fromAddr,
+    to: r.toAddr,
+    amountUsd: num(r.amount),
+    timestamp: r.ts.toISOString(),
+    blockNumber: Number(r.blockNumber),
+  }));
+}
+
+export async function getLargestTransfers24h(
+  db: Db,
+  limit = 15,
+): Promise<unknown[]> {
+  const rows = await db
+    .select()
+    .from(transfers)
+    .where(sql`ts > now() - interval '24 hours'`)
+    .orderBy(desc(transfers.amount))
     .limit(limit);
   return rows.map((r) => ({
     txHash: r.txHash,

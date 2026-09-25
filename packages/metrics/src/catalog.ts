@@ -85,7 +85,7 @@ export const METRIC_CATALOG: MetricDef[] = [
     priceUsd: 0.01,
     params: [daysParam],
     path: "/v1/metrics/stablecoin-volume",
-    okxSource: "GET /api/v6/explorer/transaction-log/logs",
+    okxSource: "GET /api/v6/explorer/log/by-address-and-topic",
     computeNote: "Aggregated from decoded USDT0 Transfer events collected by the indexer",
   },
   {
@@ -97,7 +97,7 @@ export const METRIC_CATALOG: MetricDef[] = [
     priceUsd: 0.01,
     params: [daysParam],
     path: "/v1/metrics/stablecoin-netflow",
-    okxSource: "GET /api/v6/explorer/transaction-log/logs",
+    okxSource: "GET /api/v6/explorer/log/by-address-and-topic",
     computeNote: "mint = transfers from zero address; burn = transfers to zero address; signed value",
   },
   {
@@ -126,7 +126,7 @@ export const METRIC_CATALOG: MetricDef[] = [
       },
     ],
     path: "/v1/metrics/whale-transfers",
-    okxSource: "GET /api/v6/explorer/transaction-log/logs",
+    okxSource: "GET /api/v6/explorer/log/by-address-and-topic",
     computeNote: "Served from indexed USDT0 Transfer events",
   },
   {
@@ -147,7 +147,7 @@ export const METRIC_CATALOG: MetricDef[] = [
     ],
     path: "/v1/metrics/holder-concentration",
     okxSource: "GET /api/v6/dex/market/token/cluster/top-holders",
-    computeNote: "Cached 1h; falls back to top-20 holders endpoint on OKX error 50038",
+    computeNote: "Cached 1h; falls back to the token/holder endpoint when cluster data is unavailable",
   },
 ];
 

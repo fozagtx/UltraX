@@ -15,7 +15,7 @@ import {
   getCollectorState,
   type Db,
 } from "@ultrax/metrics";
-import { OkxClient, OkxNotConfiguredError, OkxError } from "../okx/client.js";
+import { OkxClient, OkxNotConfiguredError, OkxError } from "@ultrax/metrics";
 import {
   scanRange,
   getLatestBlock,

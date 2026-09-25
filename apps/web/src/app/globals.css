@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0b0d10;
+  --surface: #12151a;
+  --border: #1f242c;
+  --text: #e6e8eb;
+  --muted: #8b949e;
+  --accent: #ff5a1f;
+  --pos: #3fb950;
+  --neg: #f85149;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+* {
+  border-color: var(--border);
+}
+
+.mono {
+  font-variant-numeric: tabular-nums;
+}

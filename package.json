@@ -10,8 +10,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "npm run build -w packages/metrics && npm run build -w apps/api",
-    "test": "npm run test -w packages/metrics --if-present && npm run test -w apps/api",
+    "build": "npm run build -w packages/metrics && npm run build -w apps/api && npm run build -w apps/web",
+    "test": "npm run test -w packages/metrics --if-present && npm run test -w apps/api && npm run test -w apps/web --if-present",
     "dev:api": "npm run dev -w apps/api"
   }
 }

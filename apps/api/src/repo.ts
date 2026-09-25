@@ -9,7 +9,7 @@ import {
   USDT0_ADDRESS,
   type Db,
 } from "@ultrax/metrics";
-import type { OkxClient, TopHoldersResult } from "./okx/client.js";
+import type { OkxClient, TopHoldersResult } from "@ultrax/metrics";
 
 export interface Repo {
   ping(): Promise<void>;

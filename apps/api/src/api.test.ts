@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import request from "supertest";
 import crypto from "node:crypto";
 import { decodeTransfer } from "./collector/decode.js";
-import { okxSign } from "./okx/client.js";
+import { okxSign } from "@ultrax/metrics";
 import { createApp } from "./server.js";
 import type { Repo } from "./repo.js";
 

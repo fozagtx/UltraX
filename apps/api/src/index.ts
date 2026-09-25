@@ -2,7 +2,7 @@ import { createDb, runMigrations } from "@ultrax/metrics";
 import { loadEnv } from "./env.js";
 import { createRepo } from "./repo.js";
 import { createApp } from "./server.js";
-import { OkxClient } from "./okx/client.js";
+import { OkxClient } from "@ultrax/metrics";
 import { startCollector, type CollectorHandle } from "./collector/index.js";
 import { log } from "./log.js";
 
