@@ -1,30 +1,20 @@
 import { loadEnv } from "./env.js";
-import { createApp, makeLiveCheckDeps } from "./server.js";
+import { createApp } from "./server.js";
 import { createPaymentScanner } from "./payments.js";
-import { makeXLayerClient, OkxClient } from "./core/index.js";
+import { OkxClient } from "./okx/client.js";
+import { UniverseService } from "./intel/universe.js";
 import { log } from "./log.js";
 
 async function main() {
   const env = loadEnv();
   const rpcUrls = [env.XLAYER_RPC_URL, env.XLAYER_RPC_URL_BACKUP].filter(Boolean);
-  const chain = makeXLayerClient(rpcUrls);
-  const okx = new OkxClient({
-    apiKey: env.OKX_API_KEY,
-    secretKey: env.OKX_SECRET_KEY,
-    passphrase: env.OKX_PASSPHRASE,
-    baseUrl: env.OKX_BASE_URL,
-  });
-
-  const checkDeps = await makeLiveCheckDeps({
-    okx,
-    chain,
-    tokenDecimals: new Map(),
-  });
+  const universe = new UniverseService(
+    new OkxClient(env.OKX_REST_BASE),
+  );
 
   const app = createApp({
     env,
-    checkDeps,
-    okxConfigured: env.okxConfigured,
+    universe,
     facilitator: env.okxConfigured
       ? {
           apiKey: env.OKX_API_KEY!,
@@ -48,10 +38,17 @@ async function main() {
   });
 
   app.listen(env.PORT, () => {
-    log("info", `kwyh-api listening on :${env.PORT}`, {
-      okxConfigured: env.okxConfigured,
+    log("info", `listening on :${env.PORT}`, {
+      paymentsConfigured: env.okxConfigured,
     });
   });
+  const refresh = () => {
+    universe.refresh().catch((error) =>
+      log("error", "universe refresh failed", { err: String(error) }),
+    );
+  };
+  refresh();
+  setInterval(refresh, 60_000);
 }
 
 main().catch((err) => {

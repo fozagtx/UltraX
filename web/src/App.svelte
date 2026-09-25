@@ -5,35 +5,42 @@
     fetchCatalog,
     fetchHealth,
     fetchPayments,
-    fetchStatus,
+    fetchPreview,
     type Catalog,
     type Health,
     type Payments,
-    type Status,
+    type Period,
+    type Preview,
   } from "./api";
 
   let health = $state<Health | null>(null);
-  let status = $state<Status | null>(null);
+  let preview = $state<Preview | null>(null);
   let catalog = $state<Catalog | null>(null);
   let payments = $state<Payments | null>(null);
   let error = $state<string | null>(null);
   let lastRefresh = $state<Date | null>(null);
   let dark = $state(false);
+  let period = $state<Period>("daily");
 
   const EXPLORER = "https://www.okx.com/web3/explorer/xlayer";
+  const PERIODS: { key: Period; label: string }[] = [
+    { key: "daily", label: "Daily" },
+    { key: "weekly", label: "Weekly" },
+    { key: "monthly", label: "Monthly" },
+  ];
 
   async function load() {
-    const [h, s, c, p] = await Promise.allSettled([
+    const [h, pv, c, p] = await Promise.allSettled([
       fetchHealth(),
-      fetchStatus(),
+      fetchPreview(),
       fetchCatalog(),
       fetchPayments(),
     ]);
     if (h.status === "fulfilled") health = h.value;
-    if (s.status === "fulfilled") status = s.value;
+    if (pv.status === "fulfilled") preview = pv.value;
     if (c.status === "fulfilled") catalog = c.value;
     if (p.status === "fulfilled") payments = p.value;
-    const failed = [h, s, c, p].filter((r) => r.status === "rejected");
+    const failed = [h, pv, c, p].filter((r) => r.status === "rejected");
     error =
       failed.length === 4
         ? `Cannot reach the service at ${API_BASE}`
@@ -46,21 +53,21 @@
   function toggleTheme() {
     dark = !dark;
     document.documentElement.dataset.theme = dark ? "dark" : "light";
-    localStorage.setItem("kwyh-theme", dark ? "dark" : "light");
+    localStorage.setItem("ultrax-theme", dark ? "dark" : "light");
   }
 
   onMount(() => {
     dark =
-      localStorage.getItem("kwyh-theme") === "dark" ||
-      (!localStorage.getItem("kwyh-theme") &&
+      localStorage.getItem("ultrax-theme") === "dark" ||
+      (!localStorage.getItem("ultrax-theme") &&
         matchMedia("(prefers-color-scheme: dark)").matches);
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     load();
-    const id = setInterval(load, 30_000);
+    const id = setInterval(load, 60_000);
     return () => clearInterval(id);
   });
 
-  const usd = (n: number | null, digits = 2) =>
+  const usd = (n: number | null | undefined, digits = 2) =>
     n == null
       ? "—"
       : n.toLocaleString("en-US", {
@@ -70,15 +77,31 @@
           maximumFractionDigits: digits,
         });
 
-  const gapPct = (a: number | null, b: number | null) =>
-    a == null || b == null || b === 0 ? null : ((a - b) / b) * 100;
+  const price = (n: number | null | undefined) =>
+    usd(n, n != null && Math.abs(n) < 1 ? 4 : 2);
 
-  const fmtPct = (n: number | null) =>
+  const compactUsd = (n: number | null | undefined) =>
+    n == null
+      ? "—"
+      : n.toLocaleString("en-US", {
+          style: "currency",
+          currency: "USD",
+          notation: "compact",
+          maximumFractionDigits: 1,
+        });
+
+  const fmtPct = (n: number | null | undefined) =>
     n == null ? "—" : `${n > 0 ? "+" : ""}${n.toFixed(2)}%`;
+
+  const pctColor = (n: number | null | undefined) =>
+    n == null || n === 0 ? "var(--ink-3)" : n > 0 ? "var(--ok)" : "var(--stop)";
+
+  const rate = (n: number | null | undefined) =>
+    n == null ? "—" : `${(n * 100).toFixed(1)}%`;
 
   const short = (addr: string) => `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 
-  function ago(ts: number | string | null) {
+  function ago(ts: number | string | null | undefined) {
     if (ts == null) return "—";
     const ms = Date.now() - new Date(ts).getTime();
     const s = Math.max(0, Math.round(ms / 1000));
@@ -97,26 +120,31 @@
     return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`;
   }
 
-  const verdictColor: Record<string, string> = {
-    OK: "var(--ok)",
-    CAUTION: "var(--caution)",
-    STOP: "var(--stop)",
-  };
+  let runners = $derived(preview?.runners[period] ?? []);
+  let cal = $derived(preview?.model.calibration[period] ?? null);
+  let exampleBody = $derived(
+    period === "daily"
+      ? `{"period":"daily","direction":"up","limit":10}`
+      : period === "weekly"
+        ? `{"period":"weekly","direction":"up","limit":10}`
+        : `{"period":"monthly","direction":"up","limit":10}`,
+  );
 </script>
 
 <div class="strip">
-  Free, read-only view of the service. The paid <code>POST /check</code> is
-  never called from this page.
+  Free teaser from <code>GET /preview</code>. Scores, probabilities and positioning are paid — this page
+  never calls a paid endpoint.
 </div>
 
 <header class="nav">
   <a class="brand" href="/">
     <span class="mark"></span>
-    Know What You Hold
+    UltraX
   </a>
   <nav class="links">
-    <a href="#tokens">Tokens</a>
-    <a href="#rules">Rules</a>
+    <a href="#runners">Runners</a>
+    <a href="#preipo">Pre-IPO</a>
+    <a href="#api">API</a>
     <a href="#payments">Payments</a>
     <a href={`${API_BASE}/catalog`} target="_blank" rel="noreferrer">Catalog</a>
   </nav>
@@ -146,28 +174,32 @@
 
 <main>
   <section class="hero">
-    <div class="pill">
-      OKX AI · A2MCP agent service · X Layer
-    </div>
-    <h1>Know what you hold<br class="desktop" /> before you trade it.</h1>
+    <div class="pill">OKX AI · A2MCP agent service · x402 on X Layer</div>
+    <h1>Predictive intelligence<br class="desktop" /> for stocks on OKX.</h1>
     <p class="sub">
-      A pre-trade check for tokenized stocks on X Layer. Agents pay
-      <strong>{catalog?.fee ?? "0.005"} USDT0</strong> per call and get a rule-based
-      OK / CAUTION / STOP with live reference prices, market status and token rights.
+      Daily, weekly and monthly runners, per-stock signals and pre-IPO intelligence across every
+      stock perpetual and xStock listed on OKX. Agents pay per call in <strong>USDT0</strong> and get
+      calibrated scores, up-probabilities, positioning and valuation data.
     </p>
     <div class="hero-meta">
-      <span class="chip" class:open={status?.marketOpen} class:closed={status && !status.marketOpen}>
+      <span class="chip" class:open={preview?.usMarket.open} class:closed={preview && !preview.usMarket.open}>
         <i></i>
-        {#if status}
-          NYSE {status.marketOpen ? "open" : "closed"}
-          {#if status.nextChange} · {status.marketOpen ? "closes" : "opens"} {new Date(status.nextChange).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" })}{/if}
+        {#if preview}
+          US market {preview.usMarket.open ? "open" : "closed"}
+          {#if preview.usMarket.nextChange} · {preview.usMarket.open ? "closes" : "opens"} {new Date(preview.usMarket.nextChange).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" })}{/if}
         {:else}
           Market status…
         {/if}
       </span>
       <span class="chip">
-        <i class="okx" class:on={health?.okxConfigured}></i>
-        OKX data {health ? (health.okxConfigured ? "connected" : "public only") : "…"}
+        <i class="okx" class:on={health?.universe.ready}></i>
+        {#if health?.universe.ready}
+          {health.universe.perps} stock perps · {health.universe.spots} xStocks · {health.universe.preIpo} pre-IPO
+        {:else if health}
+          Universe warming up…
+        {:else}
+          OKX universe…
+        {/if}
       </span>
       {#if lastRefresh}
         <span class="chip muted">refreshed {ago(lastRefresh.getTime())}</span>
@@ -178,71 +210,117 @@
     {/if}
   </section>
 
-  <section id="tokens" class="grid tokens">
-    {#each catalog?.tokens ?? [{ ticker: "NVDAx" }, { ticker: "TSLAx" }, { ticker: "AAPLx" }] as t (t.ticker)}
-      {@const row = status?.tokens.find((x) => x.ticker === t.ticker)}
-      {@const gap = gapPct(row?.okxExchange ?? null, row?.realStock ?? null)}
-      <article class="card token">
-        <header>
-          <div>
-            <h3>{t.ticker}</h3>
-            <span class="tiny">{t.ticker.slice(0, -1)} · xStock wrapper</span>
-          </div>
-          <span
-            class="gap"
-            style:color={gap == null ? "var(--ink-3)" : Math.abs(gap) <= 1 ? "var(--ok)" : Math.abs(gap) <= 3 ? "var(--caution)" : "var(--stop)"}
-            title="OKX price vs real stock"
-          >{fmtPct(gap)}</span>
-        </header>
-        <div class="big">{usd(row?.okxExchange ?? null)}</div>
-        <div class="tiny">OKX exchange · {ago(row?.okxTs ?? null)}</div>
-        <dl>
-          <div><dt>Real stock</dt><dd>{usd(row?.realStock ?? null)}</dd></div>
-          <div><dt>As of</dt><dd>{ago(row?.stockPriceAsOf ?? null)}</dd></div>
-          <div><dt>Token multiplier</dt><dd>{row?.multiplier == null ? "—" : row.multiplier.toFixed(6)}</dd></div>
-          {#if "wrapper" in t}
-            <div>
-              <dt>Wrapper</dt>
-              <dd><a class="mono" href={`${EXPLORER}/token/${t.wrapper}`} target="_blank" rel="noreferrer">{short(t.wrapper)}</a></dd>
-            </div>
-          {/if}
-        </dl>
-      </article>
-    {/each}
+  <section id="runners" class="card wide">
+    <header class="row">
+      <div>
+        <h2>Top runners</h2>
+        <p class="lead">Biggest movers among OKX stock perpetuals with at least $100K 24h volume.</p>
+      </div>
+      <div class="seg" role="tablist" aria-label="Runner period">
+        {#each PERIODS as p (p.key)}
+          <button role="tab" aria-selected={period === p.key} class:on={period === p.key} onclick={() => (period = p.key)}>
+            {p.label}
+          </button>
+        {/each}
+      </div>
+    </header>
+    {#if runners.length}
+      <table>
+        <thead><tr><th>#</th><th>Symbol</th><th class="r">Last</th><th class="r">Return</th></tr></thead>
+        <tbody>
+          {#each runners as r, i (r.symbol)}
+            <tr>
+              <td class="rank">{i + 1}</td>
+              <td>
+                <span class="sym">{r.symbol}</span>
+                {#if r.preIpo}<span class="badge">Pre-IPO</span>{/if}
+              </td>
+              <td class="r">{price(r.last)}</td>
+              <td class="r strong" style:color={pctColor(r.returnPct)}>{fmtPct(r.returnPct)}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {:else if preview}
+      <p class="empty">No runners for this period yet.</p>
+    {:else}
+      <p class="empty">Loading runners…</p>
+    {/if}
+    <div class="calib">
+      <span class="tiny">Model <span class="mono">{preview?.model.name ?? "ultrax-momentum-v1"}</span> · walk-forward backtest on OKX history</span>
+      <span class="tiny">
+        {#if cal}
+          hit rate <strong>{rate(cal.hitRate)}</strong> · base up-rate {rate(cal.baseUpRate)} · {cal.samples.toLocaleString("en-US")} samples
+        {:else}
+          calibrating…
+        {/if}
+      </span>
+    </div>
   </section>
 
-  <section class="grid two">
-    <article id="rules" class="card">
-      <h2>Verdict rules</h2>
-      <p class="lead">Deterministic. Same inputs, same answer.</p>
-      <ul class="rules">
-        {#each catalog?.verdictRules ?? [] as r (r.verdict)}
-          <li>
-            <span class="verdict" style:--c={verdictColor[r.verdict] ?? "var(--ink)"}>{r.verdict}</span>
-            <span>{r.condition}</span>
-          </li>
-        {:else}
-          <li class="tiny">Loading catalog…</li>
+  <section id="preipo" class="card wide">
+    <header class="row">
+      <div>
+        <h2>Pre-IPO contracts</h2>
+        <p class="lead">
+          Cash-settled perpetuals tracking private-company valuations. No shares, votes or IPO allocation.
+        </p>
+      </div>
+    </header>
+    {#if preview && preview.preIpo.length}
+      <div class="grid preipo">
+        {#each preview.preIpo as c (c.symbol)}
+          <article class="mini">
+            <header>
+              <div>
+                <h3>{c.company ?? c.symbol}</h3>
+                <span class="tiny mono">{c.symbol}-USDT-SWAP</span>
+              </div>
+              <span class="gap" style:color={pctColor(c.change24hPct)}>{fmtPct(c.change24hPct)}</span>
+            </header>
+            <div class="big">{price(c.last)}</div>
+            <dl>
+              <div><dt>Implied valuation</dt><dd>{compactUsd(c.impliedValuationUsd)}</dd></div>
+            </dl>
+          </article>
         {/each}
-      </ul>
-    </article>
+      </div>
+    {:else if preview}
+      <p class="empty">No pre-IPO contracts are live on OKX right now.</p>
+    {:else}
+      <p class="empty">Loading pre-IPO contracts…</p>
+    {/if}
+  </section>
 
-    <article class="card">
-      <h2>What the token gives you</h2>
-      <p class="lead">Rights attached to every covered xStock.</p>
-      {#if catalog}
-        {@const r = catalog.rights[catalog.tokens[0]?.ticker ?? "NVDAx"]}
-        <dl class="rights">
-          <div><dt>Type</dt><dd>{r.type}</dd></div>
-          <div><dt>Voting</dt><dd>{r.voting ? "Yes" : "No"}</dd></div>
-          <div><dt>Dividends</dt><dd>{r.dividends}</dd></div>
-          <div><dt>Redemption</dt><dd>{r.redemption}</dd></div>
-          <div><dt>Restricted</dt><dd>{catalog.restricted.join(", ")}</dd></div>
-        </dl>
-      {:else}
-        <p class="tiny">Loading catalog…</p>
-      {/if}
-    </article>
+  <section id="api" class="card wide code">
+    <h2>Call it from your agent</h2>
+    <p class="lead">
+      Unpaid requests answer <code>402</code> with a <code>PAYMENT-REQUIRED</code> header; x402-aware
+      clients pay and retry automatically. Missing inputs answer <code>400 input_required</code> before
+      any payment.
+    </p>
+    <pre>{`curl -s -X POST ${API_BASE}/runners \\
+  -H 'content-type: application/json' \\
+  -d '${exampleBody}'`}</pre>
+    {#if catalog}
+      <table class="endpoints-table">
+        <thead><tr><th>Endpoint</th><th class="desc">What it returns</th><th class="r">Price</th></tr></thead>
+        <tbody>
+          {#each catalog.endpoints.paid as e (e.path)}
+            <tr>
+              <td class="mono nowrap">{e.method} {e.path}</td>
+              <td class="desc">{e.description}</td>
+              <td class="r nowrap">{e.priceUsd} USDT0</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+      <div class="endpoints">
+        {#each catalog.endpoints.free as e (e)}
+          <span class="tag free">{e}</span>
+        {/each}
+      </div>
+    {/if}
   </section>
 
   <section id="payments" class="card wide">
@@ -282,27 +360,11 @@
       </p>
     {/if}
   </section>
-
-  <section class="card wide code">
-    <h2>Call it from your agent</h2>
-    <p class="lead">Unpaid requests answer <code>402</code> with a <code>PAYMENT-REQUIRED</code> header; x402-aware clients pay and retry automatically.</p>
-    <pre>{`curl -s -X POST ${API_BASE}/check \\
-  -H 'content-type: application/json' \\
-  -d '{"ticker":"NVDAx","side":"sell","sizeUSD":500}'`}</pre>
-    <div class="endpoints">
-      {#each catalog?.endpoints.free ?? ["GET /health", "GET /status", "GET /payments/recent", "GET /catalog"] as e (e)}
-        <span class="tag free">{e}</span>
-      {/each}
-      {#each catalog?.endpoints.paid ?? [] as e (e)}
-        <span class="tag paid">{e}</span>
-      {/each}
-    </div>
-  </section>
 </main>
 
 <footer>
   <span>{catalog?.disclaimer ?? "Information only, not investment advice."}</span>
-  <span>Not available in {catalog?.restricted.join(", ") ?? "US, EU, CA, UK, AU"}.</span>
+  <span>Data: OKX public market API · updated {ago(preview?.updatedAt)}</span>
 </footer>
 
 <style>
@@ -501,17 +563,7 @@
     display: grid;
     gap: 20px;
   }
-  .tokens {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .two {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
   @media (max-width: 860px) {
-    .tokens,
-    .two {
-      grid-template-columns: 1fr;
-    }
     .links {
       display: none;
     }
@@ -571,9 +623,6 @@
     }
     .big {
       font-size: 34px;
-    }
-    .token header {
-      margin-bottom: 16px;
     }
     .wide .row {
       flex-direction: column;
@@ -644,20 +693,6 @@
     color: var(--ink-3);
   }
 
-  .token header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 22px;
-  }
-  .token .gap {
-    font-size: 13px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: var(--panel-soft);
-  }
   .big {
     font-size: 40px;
     font-weight: 600;
@@ -686,40 +721,7 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
   }
-  dd a:hover {
-    text-decoration: underline;
-  }
-  .rights div {
-    align-items: flex-start;
-  }
 
-  .rules {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: grid;
-    gap: 12px;
-  }
-  .rules li {
-    display: flex;
-    gap: 14px;
-    align-items: flex-start;
-    font-size: 14px;
-    line-height: 1.45;
-    color: var(--ink-2);
-  }
-  .verdict {
-    flex: none;
-    width: 84px;
-    text-align: center;
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    padding: 5px 0;
-    border-radius: 999px;
-    color: var(--c);
-    background: color-mix(in srgb, var(--c) 12%, transparent);
-  }
 
   .wide .row {
     display: flex;
@@ -802,10 +804,6 @@
     background: var(--panel-soft);
     border: 1px solid var(--line);
   }
-  .tag.paid {
-    background: color-mix(in srgb, var(--caution) 12%, transparent);
-    border-color: transparent;
-  }
 
   footer {
     max-width: 1120px;
@@ -817,5 +815,128 @@
     gap: 8px;
     font-size: 12px;
     color: var(--ink-3);
+  }
+
+  #runners,
+  #preipo,
+  #api {
+    margin-bottom: 20px;
+  }
+  .seg {
+    display: inline-flex;
+    padding: 4px;
+    gap: 2px;
+    border-radius: 999px;
+    background: var(--panel-soft);
+    border: 1px solid var(--line);
+  }
+  .seg button {
+    border: 0;
+    background: transparent;
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    color: var(--ink-2);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+  }
+  .seg button.on {
+    background: var(--panel);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(15, 17, 22, 0.08);
+  }
+  .r {
+    text-align: right;
+  }
+  .strong {
+    font-weight: 600;
+  }
+  .rank {
+    width: 36px;
+    color: var(--ink-3);
+  }
+  .sym {
+    font-weight: 600;
+  }
+  .badge {
+    margin-left: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+    color: var(--caution);
+    background: color-mix(in srgb, var(--caution) 12%, transparent);
+  }
+  .calib {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .calib .tiny {
+    margin: 0;
+  }
+  .preipo {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+  .mini {
+    padding: 20px;
+    border-radius: 16px;
+    background: var(--panel-soft);
+    border: 1px solid var(--line);
+  }
+  .mini header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .mini h3 {
+    font-size: 18px;
+  }
+  .mini header > div {
+    min-width: 0;
+  }
+  .mini header .mono {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mini .big {
+    font-size: 30px;
+  }
+  .mini .gap {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: var(--panel);
+  }
+  .endpoints-table {
+    margin-bottom: 16px;
+  }
+  .endpoints-table .desc {
+    color: var(--ink-2);
+    padding-right: 16px;
+  }
+  #runners td + td,
+  #payments td + td,
+  #payments th + th,
+  #runners th + th {
+    padding-left: 12px;
+  }
+  .nowrap {
+    white-space: nowrap;
+    padding-right: 16px;
+  }
+  @media (max-width: 640px) {
+    .endpoints-table .desc {
+      display: none;
+    }
   }
 </style>

@@ -1,6 +1,6 @@
 ---
-title: Know What You Hold
-emoji: 🛡️
+title: UltraX
+emoji: 📈
 colorFrom: gray
 colorTo: gray
 sdk: docker
@@ -8,204 +8,172 @@ app_port: 7860
 pinned: false
 ---
 
-# Know What You Hold
+# UltraX — predictive intelligence for stocks on OKX
 
-A paid pre-trade safety check for tokenized stocks (xStocks) on X Layer, sold to
-AI agents over x402.
+A paid market-intelligence API for AI agents covering every stock listed on OKX:
+stock perpetuals (for example `NVDA-USDT-SWAP`), xStock spot pairs (`XNVDA-USDT`)
+and pre-IPO contracts (`OPENAI-USDT-SWAP`, `ANTHROPIC-USDT-SWAP`, ...).
 
-Send a stock token and a trade size (`sell $500 of NVDAx`); get back one verdict
-— OK, CAUTION or STOP — plus four facts:
+- **Runners.** Daily, weekly and monthly top movers (or worst movers), with a
+  predictive score, a calibrated up-probability and positioning data for each.
+- **Signal.** A full read on one stock over three horizons: score, up-probability,
+  expected range, technicals, support and resistance, funding, open interest, the
+  long/short ratio, taker flow, and basis against the xStock spot and the index.
+- **Pre-IPO.** Every OKX pre-IPO contract, with its implied valuation, performance
+  since listing, order-book depth, funding, OI and the contract rules.
 
-1. The price gap between the token on X Layer and both the real stock and OKX's
-   exchange price.
-2. Whether the US market is open.
-3. What you would actually get back for that size, from a live DEX quote.
-4. What the token does and does not give you (voting, dividends, redemption,
-   restricted regions).
-
-Each check costs **0.005 USDT**, paid in USDT0 on X Layer via the x402 payment
-protocol. Every paid call is a visible on-chain transaction.
-
-Available on OKX AI as an A2MCP service.
-
-## Why
-
-xStocks trade 24/7 on X Layer, but there is no on-chain stock oracle, pool depth
-is thin, and off-hours prices are estimates. An agent that trades on the token
-price alone can buy at a large premium or sell into a pool that returns a
-fraction of the expected value. This service is the pre-trade check any agent
-can call and pay for, combining price, market status, exit value and rights in
-one answer.
+Agents pay per call in USDT0 on X Layer using the x402 protocol (OKX Payment
+SDK). The service is listed on OKX AI as an A2MCP service. All market data comes
+live from OKX's public v5 market API, and the universe is discovered from OKX's
+instrument list, so newly listed stocks appear automatically.
 
 ## How it works
 
 ```
-agent -> POST /check {ticker, side, sizeUSD}
+agent -> POST /runners {period:"weekly"}
       -> 402 Payment Required (x402, USDT0 on X Layer)
-      -> pays 0.005 USDT, retries with payment signature
-      -> server runs 5 data sources in parallel, applies verdict rules
-      -> {verdict, reasons, price, exit, rights, sources, disclaimer}
+      -> pays, retries with payment signature
+      -> ranked runners + scores + pUp + positioning + model calibration
 ```
 
-Payment settles after the handler responds, so the settlement transaction hash
-is returned in the `PAYMENT-RESPONSE` header (base64 JSON, field `transaction`),
-not in the response body.
-
-### Verdict rules
-
-| Verdict  | When                                                                            |
-| -------- | ------------------------------------------------------------------------------- |
-| STOP     | A required price source is missing or stale, gap > 3%, or exit returns < 90%    |
-| CAUTION  | US market closed, gap 1-3% vs stock or OKX, or exit returns 90-98% of size      |
-| OK       | Market open, gap below 1%, and exit returns at least 98%                        |
-
-The verdict uses the larger of the two price gaps (vs the real stock and vs
-OKX's exchange price). The multiplier `m = wrapper.convertToAssets(1e18) / 1e18`
-adjusts xStock prices for dividends and splits.
+Missing or invalid inputs are rejected with `400` **before** payment. An empty
+body returns `status: "input_required"` with the input schema, so x402 clients
+can discover the parameters. The settlement transaction hash is in the
+`PAYMENT-RESPONSE` header (base64 JSON, field `transaction`).
 
 ## API
 
-Free endpoints:
+### Paid
 
-| Endpoint               | Description                                                            |
-| ---------------------- | ---------------------------------------------------------------------- |
-| `GET /health`          | Liveness: network, payTo, market open flag, uptime                     |
-| `GET /catalog`         | Machine-readable service catalog (input schema, tokens, verdict rules) |
-| `GET /status`          | Current stock/OKX prices, multipliers and market state per token       |
-| `GET /payments/recent` | Recent USDT0 transfers to the service wallet, read from X Layer RPC    |
+| Endpoint        | Price      | Body                                                                                                       |
+| --------------- | ---------- | ---------------------------------------------------------------------------------------------------------- |
+| `POST /runners` | 0.01 USDT  | `{period: daily\|weekly\|monthly, market?: perp\|spot, direction?: up\|down, limit?: 1-50, minVolumeUsd?}` |
+| `POST /signal`  | 0.005 USDT | `{symbol, period?: daily\|weekly\|monthly}`; `NVDA`, `NVDA-USDT-SWAP`, `XNVDA-USDT` and `NVDAx` all resolve |
+| `POST /preipo`  | 0.01 USDT  | `{symbol?}`; omit it to get every live pre-IPO contract                                                    |
 
-Paid endpoint:
+### Free
 
-### `POST /check` — 0.005 USDT per call
+| Endpoint               | Description                                                                        |
+| ---------------------- | ---------------------------------------------------------------------------------- |
+| `GET /health`          | Liveness, payment config, universe counts and refresh times                        |
+| `GET /catalog`         | Machine-readable catalog: endpoints, input schemas, prices, model, data sources    |
+| `GET /universe`        | Every covered instrument (stock perps, xStocks, pre-IPO flag, spot/perp links)     |
+| `GET /preview`         | Teaser: top 5 runners per period (return only), pre-IPO valuations, model hit rates |
+| `GET /payments/recent` | Recent USDT0 payments to the service wallet, read from X Layer RPC                 |
 
-Request:
+### Example: `POST /runners`
 
-```json
-{ "ticker": "NVDAx", "side": "sell", "sizeUSD": 500 }
+```bash
+curl -s -X POST $API/runners -H 'content-type: application/json' \
+  -d '{"period":"weekly","direction":"up","limit":10}'
 ```
 
-- `ticker` — `NVDAx`, `TSLAx` or `AAPLx`
-- `side` — `buy` or `sell`
-- `sizeUSD` — trade size in USD, `0 < sizeUSD <= 1,000,000`
+Each row has `symbol`, `instId`, `preIpo`, `last`, `returnPct`, `vol24hUsd`,
+`score` (-100..100), `signal` (bullish/neutral/bearish), `pUp`, `confidence`,
+`volumeRatio`, `rsi14`, `trend` and `expectedRange`. Perp rows also include
+`positioning` (`fundingRate`, `openInterestUsd`, `premiumVsIndexPct`,
+`basisVsSpotPct`). The response also includes the model's calibration table for
+that market and horizon.
 
-An empty body returns `400` with the input schema (`status: "input_required"`)
-so x402 clients can discover the parameters. A valid unpaid call returns `402`.
+## Model: `ultrax-momentum-v1`
 
-Response (illustrative numbers):
+A transparent momentum model computed from OKX daily candles (UTC):
 
-```json
-{
-  "verdict": "STOP",
-  "reasons": ["US market closed", "You'd get back 86% of $500"],
-  "price": {
-    "realStock": 228.86,
-    "okxExchange": 233.1,
-    "multiplier": 1.0004,
-    "xlayerToken": 235.27,
-    "gapVsStockPct": 2.8,
-    "gapVsOkxPct": 0.9,
-    "marketOpen": false,
-    "stockPriceAsOf": "2026-09-25T20:00:00Z"
-  },
-  "exit": { "sizeUSD": 500, "expectedUSD": 431.2, "priceImpactPct": 13.8 },
-  "rights": {
-    "type": "Tracker certificate, 1:1 backed",
-    "voting": false,
-    "dividends": "Reinvested through the token multiplier",
-    "redemption": "Eligible holders only, US business days",
-    "restricted": ["US", "EU", "CA", "UK", "AU"]
-  },
-  "payment": { "network": "eip155:196", "asset": "USDT0", "priceUsd": 0.005 },
-  "disclaimer": "Information only, not investment advice."
-}
+```
+score = 100 * clip( 0.5  * clip(z, -3, 3)/3                      // volatility-adjusted return, z = r / (σ·√h)
+                  + 0.25 * trend                                // price vs SMA20 vs SMA50: +1 / 0 / -1
+                  + 0.15 * clip(log2(volRatio), -1, 1) * sign(r) // volume confirmation
+                  + rsiAdj,                                     // -0.10 if RSI14 > 75, +0.10 if < 25
+                  -1, 1)
 ```
 
-## Covered tokens
+`h` is the horizon (1, 7 or 30 days). `σ` is the stdev of the last 30 daily log
+returns. `bullish` means score ≥ 25 and `bearish` means score ≤ −25.
 
-Pools trade the ERC-4626 wrapper; every price and quote uses the wrapper.
+**Calibration.** The service runs a walk-forward backtest over the OKX candle
+history of every instrument in the market. It scores each bar using only data up
+to that bar, measures the realized forward return over `h` days, and steps in
+non-overlapping windows. It groups scores into five buckets. `pUp` is the
+Laplace-smoothed share of up moves in the live score's bucket. `confidence`
+depends on the bucket's sample count: `low` < 30, `medium` < 150, `high`
+otherwise. `hitRate` and `baseUpRate` are published so agents can judge whether
+the signal beats the base rate. Calibration recomputes after every candle refresh
+(every 15 minutes).
 
-| Token | Wrapper                                    | Raw rebasing token                         | OKX ticker  | RedStone id |
-| ----- | ------------------------------------------ | ------------------------------------------ | ----------- | ----------- |
-| NVDAx | `0xa8ddb5cd96b5222afe198316e9a57caa642850d5` | `0xc845b2894dbddd03858fd2d643b4ef725fe0849d` | XNVDA-USDT  | NVDA        |
-| TSLAx | `0xc3fdbe3a68ee5de461d30415a8165cf9aefe1171` | `0x8ad3c73f833d3f9a523ab01476625f269aeb7cf0` | XTSLA-USDT  | TSLA        |
-| AAPLx | `0x943bf64d566c32a2bcd41ac92fb63c111cc9de8f` | `0x9d275685dc284c8eb1c79f6aba7a63dc75ec890a` | XAAPL-USDT  | AAPL        |
+## Pre-IPO contracts
 
-Payment asset: USDT0 `0x779ded0c9e1022225f8e0630b35a9b54be713736` (6 decimals)
-on X Layer (`eip155:196`; testnet `eip155:1952`).
+OKX pre-IPO perpetuals are **cash-settled derivatives** that track a private
+company's valuation. They do not grant shares, voting rights or an IPO
+allocation. The contract price is set so that price × estimated share count ≈
+company valuation. `/preipo` reports `impliedValuationUsd` from the share count
+in the OKX listing announcement. When the company discloses its actual share
+count, OKX rebases the contract (value-neutral). After the IPO, the contract
+converts to a standard stock perpetual. Pre-IPO contracts are detected
+dynamically (`ruleType = pre_market` in OKX's instrument list).
 
-## Data sources
+## Data sources (all OKX)
 
-| # | Source                      | Use                                   |
-| - | --------------------------- | ------------------------------------- |
-| 1 | OKX Payment SDK (x402)      | Charge 0.005 USDT per call            |
-| 2 | Onchain OS Market API       | Token price on X Layer                |
-| 3 | OKX DEX aggregator quote    | Expected exit value for the size      |
-| 4 | OKX exchange ticker         | OKX price (XNVDA/XTSLA/XAAPL-USDT)    |
-| 5 | RedStone `redstone-primary-prod` | Real stock price (median of 3 signers) |
-| 6 | X Layer RPC                 | Wrapper `convertToAssets` multiplier  |
-
-## OKX AI listing
-
-An A2MCP agent service on OKX AI: **xStock Pre-Trade Check**, 0.005 USDT per
-call, endpoint `POST /check`. Billing goes through the OKX Payment SDK
-(`@okxweb3/x402-express`). Unpaid calls get `402` with a `PAYMENT-REQUIRED`
-header, and paid calls settle in USDT0 on X Layer.
+| Source                                                                 | Use                                     |
+| ---------------------------------------------------------------------- | --------------------------------------- |
+| `/api/v5/public/instruments` (SWAP, SPOT; `instCategory=3`)            | Stock universe, pre-IPO flag, leverage  |
+| `/api/v5/market/tickers`, `/market/index-tickers`                      | Last, bid/ask, 24h stats, index price   |
+| `/api/v5/market/candles` (`1Dutc`)                                     | Returns, volatility, technicals, model  |
+| `/api/v5/public/funding-rate`, `/public/open-interest`                 | Funding and OI                          |
+| `/api/v5/rubik/stat/...` (OI history, long/short ratio, taker volume)  | Positioning for `/signal`               |
+| `/api/v5/market/books`                                                 | Pre-IPO spread and ±2% depth            |
+| OKX Payment SDK (x402) + X Layer RPC                                   | Billing and payment feed                |
 
 ## Run the service
 
 ```bash
-cp .env.example .env    # set PAY_TO and the OKX_* keys
+cp .env.example .env    # set PAY_TO; the OKX_* keys enable real x402 settlement
 npm ci
 npm run dev             # or: npm run build && npm start
+```
+
+The first universe load pulls candles for about 290 instruments and takes about
+a minute. Until it finishes, `/health` shows `universe.ready: false` and the data
+routes return `503`.
+
+```bash
+npm test                # unit + API tests (recorded real OKX responses)
+LIVE=1 npm test         # also runs the live test against OKX
+npm run smoke           # full live refresh; prints runners, signals, pre-IPO table
 ```
 
 Check the endpoint before you register:
 
 ```bash
-curl -i -X POST https://<your-domain>/check -H 'content-type: application/json' \
-  -d '{"ticker":"NVDAx","side":"sell","sizeUSD":500}'
+curl -i -X POST https://<your-domain>/runners -H 'content-type: application/json' \
+  -d '{"period":"daily"}'
 # expected: HTTP 402 + PAYMENT-REQUIRED
 ```
 
-### Deploy the API on Hugging Face
+### Deploy on Hugging Face
 
-The repo is a Docker Space: the front-matter at the top of this README and the
-`Dockerfile` are all Hugging Face needs. Create a Space (SDK: Docker), push this
-repo to it, then add these secrets in the Space settings: `PAY_TO`, `OKX_API_KEY`,
-`OKX_SECRET_KEY`, `OKX_PASSPHRASE`, and set `PUBLIC_API_BASE_URL` to the Space URL
-(`https://<user>-<space>.hf.space`). The server listens on port 7860.
+The repo is a Docker Space. The front-matter at the top of this README and the
+`Dockerfile` are all Hugging Face needs. Add these secrets: `PAY_TO`,
+`OKX_API_KEY`, `OKX_SECRET_KEY` and `OKX_PASSPHRASE`. Set `PUBLIC_API_BASE_URL`
+to the Space URL. The server listens on port 7860.
 
-```bash
-docker build -t kwyh . && docker run -p 7860:7860 -e PAY_TO=0x... kwyh
-```
-
-Then register and list it as an A2MCP ASP with Onchain OS, following
+Then register each paid endpoint as an A2MCP ASP with Onchain OS, following
 [How to Register as an ASP](https://web3.okx.com/onchainos/dev-docs/okxai/registerasp).
-You provide the name, description, price (0.005) and the public HTTPS endpoint.
 
 ## Status page (free)
 
-`web/` is a small Svelte site that shows the service publicly: live token prices,
-market status, verdict rules, token rights and the payment feed. It only reads the
-free endpoints (`/health`, `/status`, `/catalog`, `/payments/recent`) and never
-calls the paid `/check`.
+`web/` is a Svelte site that shows the free preview: top runners per period,
+pre-IPO valuations, model hit rates, endpoints and the payment feed. It never
+calls a paid endpoint.
 
 ```bash
 cd web && npm ci
 VITE_API_BASE_URL=http://localhost:8080 npm run dev   # http://localhost:5173
-npm run build                                          # static output in web/dist
 ```
 
-`render.yaml` deploys it as a Render static site (`kwyh-web`); set `VITE_API_BASE_URL` there to your Hugging Face Space URL.
-
-## Restricted regions
-
-This service is not offered to users in the **US, EU, Canada, UK or
-Australia**. Tokenized stocks do not confer voting rights or a claim on the
-underlying company; dividends are reinvested through the token multiplier and
-redemption is available to eligible holders only.
+`render.yaml` deploys it as a Render static site.
 
 ## Disclaimer
 
-Information only, not investment advice. The service returns facts and a
-rule-based verdict; it does not trade, hold custody, or recommend any action.
+Information only, not investment advice. Scores and probabilities are statistical
+estimates from historical OKX data and do not guarantee future results. The
+service does not trade, hold custody or recommend any action.

@@ -4,6 +4,7 @@ export function log(
   extra: Record<string, unknown> = {},
 ): void {
   const line = JSON.stringify({
+    service: "ultrax-api",
     level,
     ts: new Date().toISOString(),
     msg,
