@@ -161,6 +161,21 @@ Then register and list it as an A2MCP ASP with Onchain OS, following
 [How to Register as an ASP](https://web3.okx.com/onchainos/dev-docs/okxai/registerasp).
 You provide the name, description, price (0.005) and the public HTTPS endpoint.
 
+## Status page (free)
+
+`web/` is a small Svelte site that shows the service publicly: live token prices,
+market status, verdict rules, token rights and the payment feed. It only reads the
+free endpoints (`/health`, `/status`, `/catalog`, `/payments/recent`) and never
+calls the paid `/check`.
+
+```bash
+cd web && npm ci
+VITE_API_BASE_URL=http://localhost:8080 npm run dev   # http://localhost:5173
+npm run build                                          # static output in web/dist
+```
+
+`render.yaml` deploys it as a Render static site (`kwyh-web`) next to the API.
+
 ## Restricted regions
 
 This service is not offered to users in the **US, EU, Canada, UK or
