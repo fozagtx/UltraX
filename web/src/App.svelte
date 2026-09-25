@@ -925,6 +925,8 @@
     padding-right: 16px;
   }
   #runners td + td,
+  #payments td + td,
+  #payments th + th,
   #runners th + th {
     padding-left: 12px;
   }
