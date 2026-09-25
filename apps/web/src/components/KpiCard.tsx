@@ -19,30 +19,23 @@ export default function KpiCard({
   return (
     <Link
       href={href}
-      className="block rounded-lg border p-4 transition-colors hover:border-[var(--accent)]"
-      style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+      className="block rounded-xl border border-border bg-card p-4 transition-colors hover:border-primary"
     >
-      <div className="text-xs" style={{ color: "var(--muted)" }}>
-        {label}
-      </div>
+      <div className="text-xs text-muted-foreground">{label}</div>
       {value === null ? (
-        <div
-          className="mono mt-2 text-2xl"
-          style={{ fontFamily: "var(--font-mono)", color: "var(--muted)" }}
-        >
+        <div className="mt-2 font-mono text-2xl tabular-nums text-muted-foreground">
           No data yet
         </div>
       ) : (
         <div
-          className="mono mt-2 text-2xl"
-          style={{ fontFamily: "var(--font-mono)" }}
+          className="mt-2 font-mono text-2xl tabular-nums"
           title={valueTitle}
         >
           {value}
         </div>
       )}
       {caption ? (
-        <div className="mono mt-1 text-xs" style={{ color: "var(--muted)" }}>
+        <div className="mt-1 font-mono text-xs text-muted-foreground">
           {caption}
         </div>
       ) : null}

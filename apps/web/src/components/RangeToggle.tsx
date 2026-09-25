@@ -13,14 +13,11 @@ export default function RangeToggle({
         <Link
           key={d}
           href={`${base}${base.includes("?") ? "&" : "?"}days=${d}`}
-          className="mono px-2 py-0.5 text-xs"
-          style={{
-            color: current === d ? "var(--accent)" : "var(--muted)",
-            borderBottom:
-              current === d
-                ? "1px solid var(--accent)"
-                : "1px solid transparent",
-          }}
+          className={`px-2 py-0.5 font-mono text-xs tabular-nums ${
+            current === d
+              ? "border-b border-primary text-primary"
+              : "border-b border-transparent text-muted-foreground"
+          }`}
         >
           {d}d
         </Link>

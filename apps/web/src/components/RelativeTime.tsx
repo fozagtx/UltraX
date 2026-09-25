@@ -19,7 +19,7 @@ export default function RelativeTime({ iso }: { iso: string }) {
     return () => clearInterval(t);
   }, [ts]);
   return (
-    <span className="mono" title={iso}>
+    <span className="font-mono tabular-nums" title={iso}>
       {label}
     </span>
   );

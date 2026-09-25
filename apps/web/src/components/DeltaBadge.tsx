@@ -2,17 +2,12 @@ import { pct } from "@/lib/format";
 
 export default function DeltaBadge({ value }: { value: number | null }) {
   if (value === null || value === undefined || !Number.isFinite(value)) {
-    return (
-      <span className="mono text-xs" style={{ color: "var(--muted)" }}>
-        n/a
-      </span>
-    );
+    return null;
   }
   const positive = value >= 0;
   return (
     <span
-      className="mono inline-flex items-center gap-1 text-xs"
-      style={{ color: positive ? "var(--pos)" : "var(--neg)" }}
+      className={`inline-flex items-center gap-1 font-mono text-xs tabular-nums ${positive ? "text-[#41A85F]" : "text-destructive"}`}
     >
       <svg width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
         <path
@@ -21,7 +16,7 @@ export default function DeltaBadge({ value }: { value: number | null }) {
         />
       </svg>
       {pct(value)}
-      <span style={{ color: "var(--muted)" }}>7d</span>
+      <span className="text-muted-foreground">7d</span>
     </span>
   );
 }

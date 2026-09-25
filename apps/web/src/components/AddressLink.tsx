@@ -10,8 +10,7 @@ export function AddressLink({ address }: { address: string }) {
       target="_blank"
       rel="noreferrer"
       title={address}
-      className="mono text-xs hover:text-[var(--accent)]"
-      style={{ fontFamily: "var(--font-mono)" }}
+      className="font-mono text-xs text-muted-foreground transition-colors hover:text-primary"
     >
       {truncateAddress(address)}
     </a>
@@ -25,8 +24,7 @@ export function TxLink({ hash }: { hash: string }) {
       target="_blank"
       rel="noreferrer"
       title={hash}
-      className="mono text-xs hover:text-[var(--accent)]"
-      style={{ fontFamily: "var(--font-mono)", color: "var(--muted)" }}
+      className="font-mono text-xs text-muted-foreground transition-colors hover:text-primary"
     >
       {truncateHash(hash)}
     </a>

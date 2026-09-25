@@ -10,10 +10,7 @@ export default function SourceLine({
   partial?: boolean;
 }) {
   return (
-    <div
-      className="flex flex-wrap items-center gap-3 text-xs"
-      style={{ color: "var(--muted)" }}
-    >
+    <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
       <span>{source}</span>
       {updatedAt ? (
         <span>
@@ -21,11 +18,8 @@ export default function SourceLine({
         </span>
       ) : null}
       {partial ? (
-        <span
-          className="rounded border px-1.5 py-0.5"
-          style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
-        >
-          today (partial)
+        <span className="rounded border border-primary px-1.5 py-0.5 text-primary">
+          partial day
         </span>
       ) : null}
     </div>

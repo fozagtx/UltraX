@@ -9,6 +9,7 @@ import {
   type SeriesPoint,
 } from "@ultrax/metrics";
 import { getDb } from "@/lib/db";
+import { Page, PageHeader } from "@/components/app-shell";
 import MetricChart, { type ChartPoint } from "@/components/MetricChart";
 import RangeToggle from "@/components/RangeToggle";
 import CurlBlock from "@/components/CurlBlock";
@@ -70,13 +71,10 @@ export default async function MetricDetail({
     const res = await getWhaleTransfers(db, { limit: 50 }).catch(() => null);
     const items = (res?.items ?? []) as WhaleItem[];
     body = items.length ? (
-      <div
-        className="overflow-x-auto rounded-lg border"
-        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-      >
+      <div className="overflow-x-auto rounded-xl border border-border bg-card">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs" style={{ color: "var(--muted)" }}>
+            <tr className="text-left text-xs text-muted-foreground">
               <th className="px-4 py-2">Amount</th>
               <th className="px-4 py-2">From</th>
               <th className="px-4 py-2">To</th>
@@ -86,13 +84,13 @@ export default async function MetricDetail({
           </thead>
           <tbody>
             {items.map((t) => (
-              <tr key={`${t.txHash}`} className="border-t" style={{ borderColor: "var(--border)" }}>
-                <td className="mono px-4 py-2" style={{ fontFamily: "var(--font-mono)" }}>
+              <tr key={t.txHash} className="border-t border-border">
+                <td className="px-4 py-2 font-mono tabular-nums">
                   {usd(t.amountUsd)}
                 </td>
                 <td className="px-4 py-2"><AddressLink address={t.from} /></td>
                 <td className="px-4 py-2"><AddressLink address={t.to} /></td>
-                <td className="px-4 py-2 text-xs" style={{ color: "var(--muted)" }}>
+                <td className="px-4 py-2 text-xs text-muted-foreground">
                   <RelativeTime iso={t.timestamp} />
                 </td>
                 <td className="px-4 py-2"><TxLink hash={t.txHash} /></td>
@@ -116,13 +114,10 @@ export default async function MetricDetail({
       updatedAt?: string;
     } | null;
     body = cached ? (
-      <div
-        className="rounded-lg border p-4"
-        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-      >
+      <div className="rounded-xl border border-border bg-card p-4">
         <p className="mb-3 text-sm">
           USDT0 holder concentration{" "}
-          <span className="text-xs" style={{ color: "var(--muted)" }}>
+          <span className="text-xs text-muted-foreground">
             via {cached.source}
           </span>
         </p>
@@ -135,21 +130,23 @@ export default async function MetricDetail({
           .filter(([, v]) => v !== null && v !== undefined)
           .map(([label, v]) => (
             <div key={label as string} className="mb-2">
-              <div className="mb-1 flex justify-between text-xs" style={{ color: "var(--muted)" }}>
+              <div className="mb-1 flex justify-between text-xs text-muted-foreground">
                 <span>{label}</span>
-                <span className="mono">{Number(v).toFixed(1)}%</span>
+                <span className="font-mono tabular-nums">
+                  {Number(v).toFixed(1)}%
+                </span>
               </div>
-              <div className="h-2 rounded" style={{ background: "var(--bg)" }}>
+              <div className="h-2 rounded bg-muted">
                 <div
-                  className="h-2 rounded"
-                  style={{ width: `${Math.min(100, Number(v))}%`, background: "var(--accent)" }}
+                  className="h-2 rounded bg-primary"
+                  style={{ width: `${Math.min(100, Number(v))}%` }}
                 />
               </div>
             </div>
           ))}
-        <p className="mt-3 text-xs" style={{ color: "var(--muted)" }}>
+        <p className="mt-3 text-xs text-muted-foreground">
           Look up another token on the{" "}
-          <Link href="/token" className="hover:text-[var(--accent)]">
+          <Link href="/token" className="text-primary hover:underline">
             token page
           </Link>
           .
@@ -169,10 +166,7 @@ export default async function MetricDetail({
     }));
     partial = data.at(-1)?.partial ?? false;
     body = data.length ? (
-      <div
-        className="rounded-lg border p-4"
-        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-      >
+      <div className="rounded-xl border border-border bg-card p-4">
         <div className="mb-3 flex justify-end">
           <RangeToggle base={`/metrics/${id}`} current={days} />
         </div>
@@ -184,52 +178,49 @@ export default async function MetricDetail({
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-medium">{meta.name}</h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
-          {meta.description}
-        </p>
-      </div>
+    <Page>
+      <PageHeader
+        title={meta.name}
+        description={meta.description}
+        action={
+          <Link
+            href="/metrics"
+            className="text-xs text-muted-foreground transition-colors hover:text-primary"
+          >
+            ← All metrics
+          </Link>
+        }
+      />
 
-      <div
-        className="grid grid-cols-2 gap-3 rounded-lg border p-4 text-sm sm:grid-cols-4"
-        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-      >
+      <div className="grid grid-cols-2 gap-3 rounded-xl border border-border bg-card p-4 text-sm sm:grid-cols-4">
         <div>
-          <div className="text-xs" style={{ color: "var(--muted)" }}>Unit</div>
-          <div className="mono mt-1">{meta.unit}</div>
+          <div className="text-xs text-muted-foreground">Unit</div>
+          <div className="mt-1 font-mono">{meta.unit}</div>
         </div>
         <div>
-          <div className="text-xs" style={{ color: "var(--muted)" }}>Price</div>
-          <div className="mono mt-1">${meta.priceUsd.toFixed(2)} / call</div>
+          <div className="text-xs text-muted-foreground">Price</div>
+          <div className="mt-1 font-mono tabular-nums">
+            ${meta.priceUsd.toFixed(2)} / call
+          </div>
         </div>
         <div className="col-span-2">
-          <div className="text-xs" style={{ color: "var(--muted)" }}>
-            Data source
-          </div>
-          <div className="mono mt-1 text-xs">{meta.okxSource}</div>
+          <div className="text-xs text-muted-foreground">Data source</div>
+          <div className="mt-1 font-mono text-xs">{meta.okxSource}</div>
         </div>
       </div>
 
       {body}
-      <SourceLine
-        source={sourceLine}
-        updatedAt={updatedAt}
-        partial={partial}
-      />
+      <SourceLine source={sourceLine} updatedAt={updatedAt} partial={partial} />
 
       <div>
         <h2 className="mb-1 text-sm font-medium">How it is computed</h2>
-        <p className="text-sm" style={{ color: "var(--muted)" }}>
-          {meta.computeNote}
-        </p>
+        <p className="text-sm text-muted-foreground">{meta.computeNote}</p>
       </div>
 
       <div>
         <h2 className="mb-2 text-sm font-medium">API access</h2>
         <CurlBlock text={curl} />
       </div>
-    </div>
+    </Page>
   );
 }

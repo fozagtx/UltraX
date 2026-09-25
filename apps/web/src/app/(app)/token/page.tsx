@@ -5,6 +5,7 @@ import {
   CHAIN_ID,
 } from "@ultrax/metrics";
 import { getDb } from "@/lib/db";
+import { Page, PageHeader } from "@/components/app-shell";
 import CurlBlock from "@/components/CurlBlock";
 import EmptyState from "@/components/EmptyState";
 import { AddressLink } from "@/components/AddressLink";
@@ -95,26 +96,25 @@ export default async function TokenPage({
 # 402 Payment Required + PAYMENT-REQUIRED header (x402, exact scheme, USDT0 on X Layer). Price: $0.02 per call.`;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-lg font-medium">Token lookup</h1>
+    <Page>
+      <PageHeader
+        eyebrow="X Layer · chain 196"
+        title="Token lookup"
+        description="Top-holder concentration for a token contract on X Layer."
+      />
 
       <form method="get" className="flex gap-2">
         <input
           name="address"
           defaultValue={address}
           placeholder="0x… token contract address"
-          className="mono w-full max-w-xl rounded-lg border bg-transparent px-3 py-2 text-sm"
-          style={{
-            borderColor: "var(--border)",
-            fontFamily: "var(--font-mono)",
-          }}
+          className="w-full max-w-xl rounded-lg border border-input bg-card px-3 py-2 font-mono text-sm outline-none focus:border-primary"
           pattern="0x[0-9a-fA-F]{40}"
           title="0x-prefixed 40-hex address"
         />
         <button
           type="submit"
-          className="rounded-lg border px-4 text-sm"
-          style={{ borderColor: "var(--accent)", color: "var(--accent)" }}
+          className="rounded-lg border border-primary px-4 text-sm text-primary transition-colors hover:bg-accent"
         >
           Look up
         </button>
@@ -125,16 +125,11 @@ export default async function TokenPage({
       ) : null}
 
       {result?.data ? (
-        <div
-          className="rounded-lg border p-4"
-          style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-        >
+        <div className="rounded-xl border border-border bg-card p-4">
           <p className="mb-3 text-sm">
             Holder concentration{" "}
-            <span className="mono text-xs" style={{ color: "var(--muted)" }}>
-              <AddressLink address={result.data.token} />
-            </span>{" "}
-            <span className="text-xs" style={{ color: "var(--muted)" }}>
+            <AddressLink address={result.data.token} />{" "}
+            <span className="text-xs text-muted-foreground">
               via {result.data.source}
             </span>
           </p>
@@ -147,20 +142,16 @@ export default async function TokenPage({
             .filter(([, v]) => v !== null && v !== undefined)
             .map(([label, v]) => (
               <div key={label as string} className="mb-2">
-                <div
-                  className="mb-1 flex justify-between text-xs"
-                  style={{ color: "var(--muted)" }}
-                >
+                <div className="mb-1 flex justify-between text-xs text-muted-foreground">
                   <span>{label}</span>
-                  <span className="mono">{Number(v).toFixed(1)}%</span>
+                  <span className="font-mono tabular-nums">
+                    {Number(v).toFixed(1)}%
+                  </span>
                 </div>
-                <div className="h-2 rounded" style={{ background: "var(--bg)" }}>
+                <div className="h-2 rounded bg-muted">
                   <div
-                    className="h-2 rounded"
-                    style={{
-                      width: `${Math.min(100, Number(v))}%`,
-                      background: "var(--accent)",
-                    }}
+                    className="h-2 rounded bg-primary"
+                    style={{ width: `${Math.min(100, Number(v))}%` }}
                   />
                 </div>
               </div>
@@ -168,10 +159,7 @@ export default async function TokenPage({
           {result.data.holders.length ? (
             <table className="mt-4 w-full text-sm">
               <thead>
-                <tr
-                  className="text-left text-xs"
-                  style={{ color: "var(--muted)" }}
-                >
+                <tr className="text-left text-xs text-muted-foreground">
                   <th className="py-2 pr-4">Address</th>
                   <th className="py-2 pr-4">Share</th>
                   <th className="py-2">Balance</th>
@@ -179,24 +167,14 @@ export default async function TokenPage({
               </thead>
               <tbody>
                 {result.data.holders.slice(0, 20).map((h) => (
-                  <tr
-                    key={h.address}
-                    className="border-t"
-                    style={{ borderColor: "var(--border)" }}
-                  >
+                  <tr key={h.address} className="border-t border-border">
                     <td className="py-1.5 pr-4">
                       <AddressLink address={h.address} />
                     </td>
-                    <td
-                      className="mono py-1.5 pr-4"
-                      style={{ fontFamily: "var(--font-mono)" }}
-                    >
+                    <td className="py-1.5 pr-4 font-mono tabular-nums">
                       {h.pct !== null ? `${Number(h.pct).toFixed(2)}%` : "n/a"}
                     </td>
-                    <td
-                      className="mono py-1.5"
-                      style={{ fontFamily: "var(--font-mono)" }}
-                    >
+                    <td className="py-1.5 font-mono tabular-nums">
                       {h.balance !== null ? thousands(h.balance) : "n/a"}
                     </td>
                   </tr>
@@ -219,11 +197,11 @@ export default async function TokenPage({
       ) : null}
 
       {!result ? (
-        <p className="text-sm" style={{ color: "var(--muted)" }}>
+        <p className="text-sm text-muted-foreground">
           Enter a token contract address on X Layer (chain {CHAIN_ID}) to see
           top-holder concentration.
         </p>
       ) : null}
-    </div>
+    </Page>
   );
 }

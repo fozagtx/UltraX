@@ -34,20 +34,12 @@ function ChartTooltip({
   const p = payload[0]?.payload;
   if (!p) return null;
   return (
-    <div
-      style={{
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: 8,
-        fontSize: 12,
-        padding: "6px 10px",
-      }}
-    >
-      <div style={{ color: "var(--muted)" }}>{label}</div>
-      <div style={{ fontFamily: "var(--font-mono)" }}>
+    <div className="rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs">
+      <div className="text-muted-foreground">{label}</div>
+      <div className="font-mono tabular-nums">
         {p.value === null ? "n/a" : `${thousands(p.value)} ${unit}`}
         {p.partial ? (
-          <span style={{ color: "var(--muted)" }}>
+          <span className="text-muted-foreground">
             {" "}
             · partial{p.partialReason === "coverage" ? " (coverage)" : ""}
           </span>
@@ -70,28 +62,28 @@ export default function MetricChart({
       <div className="h-64 w-full sm:h-80">
         <ResponsiveContainer>
           <BarChart data={data}>
-            <CartesianGrid stroke="var(--border)" vertical={false} />
+            <CartesianGrid stroke="#E5E3DC" vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fill: "var(--muted)", fontSize: 11 }}
+              tick={{ fill: "#777773", fontSize: 11 }}
               tickFormatter={(d: string) => d.slice(5)}
-              stroke="var(--border)"
+              stroke="#E5E3DC"
             />
             <YAxis
-              tick={{ fill: "var(--muted)", fontSize: 11 }}
-              stroke="var(--border)"
+              tick={{ fill: "#777773", fontSize: 11 }}
+              stroke="#E5E3DC"
               width={60}
               tickFormatter={(v: number) => compact(v)}
             />
             <Tooltip
-              cursor={{ fill: "var(--border)", fillOpacity: 0.3 }}
+              cursor={{ fill: "#F1F0EB" }}
               content={<ChartTooltip unit={unit} />}
             />
             <Bar dataKey="value" isAnimationActive={false} radius={[2, 2, 0, 0]}>
               {data.map((p) => (
                 <Cell
                   key={p.date}
-                  fill="var(--accent)"
+                  fill="#3F83F8"
                   fillOpacity={p.partial ? 0.35 : 1}
                 />
               ))}
@@ -100,7 +92,7 @@ export default function MetricChart({
         </ResponsiveContainer>
       </div>
       {hasPartial ? (
-        <p className="mt-2 text-xs" style={{ color: "var(--muted)" }}>
+        <p className="mt-2 text-xs text-muted-foreground">
           Dimmed bars = partial day (coverage or today)
         </p>
       ) : null}
