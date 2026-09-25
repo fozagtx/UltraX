@@ -1,0 +1,17 @@
+{
+  "name": "ultrax",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build -w packages/metrics && npm run build -w apps/api",
+    "test": "npm run test -w packages/metrics --if-present && npm run test -w apps/api",
+    "dev:api": "npm run dev -w apps/api"
+  }
+}
