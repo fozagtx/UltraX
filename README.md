@@ -1,3 +1,13 @@
+---
+title: Know What You Hold
+emoji: 🛡️
+colorFrom: gray
+colorTo: gray
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # Know What You Hold
 
 A paid pre-trade safety check for tokenized stocks (xStocks) on X Layer, sold to
@@ -157,6 +167,18 @@ curl -i -X POST https://<your-domain>/check -H 'content-type: application/json' 
 # expected: HTTP 402 + PAYMENT-REQUIRED
 ```
 
+### Deploy the API on Hugging Face
+
+The repo is a Docker Space: the front-matter at the top of this README and the
+`Dockerfile` are all Hugging Face needs. Create a Space (SDK: Docker), push this
+repo to it, then add these secrets in the Space settings: `PAY_TO`, `OKX_API_KEY`,
+`OKX_SECRET_KEY`, `OKX_PASSPHRASE`, and set `PUBLIC_API_BASE_URL` to the Space URL
+(`https://<user>-<space>.hf.space`). The server listens on port 7860.
+
+```bash
+docker build -t kwyh . && docker run -p 7860:7860 -e PAY_TO=0x... kwyh
+```
+
 Then register and list it as an A2MCP ASP with Onchain OS, following
 [How to Register as an ASP](https://web3.okx.com/onchainos/dev-docs/okxai/registerasp).
 You provide the name, description, price (0.005) and the public HTTPS endpoint.
@@ -174,7 +196,7 @@ VITE_API_BASE_URL=http://localhost:8080 npm run dev   # http://localhost:5173
 npm run build                                          # static output in web/dist
 ```
 
-`render.yaml` deploys it as a Render static site (`kwyh-web`) next to the API.
+`render.yaml` deploys it as a Render static site (`kwyh-web`); set `VITE_API_BASE_URL` there to your Hugging Face Space URL.
 
 ## Restricted regions
 
