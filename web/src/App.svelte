@@ -223,6 +223,7 @@
         connecting
       {/if}
     </span>
+    <a class="cta nav-cta" href={agentUrl} target="_blank" rel="noreferrer">Open on OKX AI ↗</a>
     <button class="icon-btn" onclick={toggleTheme} aria-label="Toggle dark mode" title="Toggle dark mode">
       {#if dark}
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
@@ -789,6 +790,12 @@
       0 0 0 1px color-mix(in srgb, var(--accent) 65%, transparent),
       0 0 24px color-mix(in srgb, var(--accent) 45%, transparent);
   }
+  .nav-cta {
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
   .cta:active {
     transform: scale(0.98);
   }
@@ -1248,7 +1255,8 @@
     }
   }
   @media (max-width: 560px) {
-    .live-hint {
+    .live-hint,
+    .actions .status {
       display: none;
     }
   }
