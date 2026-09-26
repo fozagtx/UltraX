@@ -204,7 +204,7 @@
 <div class="frame">
 <header class="topbar" bind:this={topbar}>
   <a class="brand" href="/">
-    <span class="mark" aria-hidden="true"></span>
+    <img class="mark" src="/logo.png" alt="" width="26" height="26" />
     <span>ultra<span class="dim">x</span></span>
   </a>
   <nav class="links">
@@ -510,13 +510,10 @@
     color: var(--ink-3);
   }
   .mark {
-    width: 22px;
-    height: 22px;
-    border-radius: 999px;
-    background:
-      radial-gradient(circle at 30% 30%, #9fd3ff 0 18%, transparent 19%),
-      conic-gradient(from 200deg, #1f7aa8, #6c8cff, #b8e1ff, #1f7aa8);
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+    width: 26px;
+    height: 26px;
+    border-radius: 0;
+    object-fit: contain;
   }
   .links {
     display: flex;
