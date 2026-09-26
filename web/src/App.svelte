@@ -768,7 +768,7 @@
     color: inherit;
   }
   .cta-row {
-    margin: 0 0 14px;
+    margin: 20px 0 0;
   }
   .cta {
     display: inline-flex;
@@ -1150,11 +1150,12 @@
   .steps {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
+    gap: 12px 20px;
     list-style: none;
-    margin: 16px 0 0;
-    padding: 12px 0 0;
+    margin: 20px 0 0;
+    padding: 20px 0;
     border-top: 1px dashed var(--dash);
+    border-bottom: 1px dashed var(--dash);
     font-size: 12.5px;
     color: var(--ink-2);
   }
@@ -1168,7 +1169,7 @@
     flex: 0 0 auto;
   }
   .agent-status {
-    margin: 10px 0 0;
+    margin: 12px 0 0;
     font-size: 11.5px;
     color: var(--ink-3);
   }
