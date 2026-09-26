@@ -24,6 +24,7 @@
   let payments = $state<Payments | null>(null);
   let error = $state<string | null>(null);
   let lastRefresh = $state<Date | null>(null);
+  let now = $state(Date.now());
   let dark = $state(false);
   let period = $state<Period>("daily");
   let selected = $state<string | null>(null);
@@ -105,9 +106,11 @@
     el?.addEventListener("pointermove", move);
     load();
     const id = setInterval(load, 60_000);
+    const clock = setInterval(() => (now = Date.now()), 10_000);
     return () => {
       el?.removeEventListener("pointermove", move);
       clearInterval(id);
+      clearInterval(clock);
     };
   });
 
@@ -168,6 +171,10 @@
   let featured = $derived(
     runners.find((r) => r.symbol === selected) ?? runners[0] ?? null,
   );
+  let updatedAgo = $derived.by(() => {
+    void now;
+    return preview ? ago(preview.updatedAt) : null;
+  });
   let cal = $derived(preview?.model.calibration[period] ?? null);
   const SERVICE_LABELS: Record<string, string> = {
     "/runners": "Stock runners ranking",
@@ -262,6 +269,19 @@
         {/each}
       </div>
     </header>
+    <div class="live-strip">
+      <span class="live-left">
+        {#if error && !preview}
+          <span class="live-err mono">{error}</span>
+        {:else if preview}
+          <i class="live-dot" aria-hidden="true"></i>
+          <span>Live · OKX v5 · {runners.length} runners · updated {updatedAgo}</span>
+        {:else}
+          <span>Connecting…</span>
+        {/if}
+      </span>
+      <span class="live-hint">Click a runner to chart it</span>
+    </div>
     {#if featured}
       <PriceChart
         symbol={featured.symbol}
@@ -273,6 +293,7 @@
       />
     {/if}
     {#if runners.length}
+      <div class="panel">
       <ol class="list">
         {#each runners as r, i (r.symbol)}
           <li class="row">
@@ -289,12 +310,14 @@
                 {#if r.preIpo}<span class="badge">Pre-IPO</span>{:else}<span class="mono">{r.symbol}-USDT-SWAP</span>{/if}
               </span>
               <span class="spark-wrap"><Sparkline values={r.closes ?? []} positive={(r.closes?.length ?? 0) > 1 ? r.closes[r.closes.length - 1]! >= r.closes[0]! : true} /></span>
+              {#if featured?.symbol === r.symbol}<span class="showing mono">Showing</span>{/if}
               <span class="price mono">{price(r.last)}</span>
               <span class="ret" style:color={pctColor(r.returnPct)}>{fmtPct(r.returnPct)}</span>
             </button>
           </li>
         {/each}
       </ol>
+      </div>
     {:else if preview}
       <p class="empty">No runners for this period yet.</p>
     {:else}
@@ -839,19 +862,88 @@
   .row {
     list-style: none;
   }
+  .panel {
+    padding: 6px;
+    border-radius: 14px;
+    background: var(--panel);
+    box-shadow: var(--shadow);
+  }
   .runner {
     width: 100%;
+    min-height: 48px;
     border: 0;
-    background: transparent;
+    background: var(--panel);
+    color: inherit;
+    font: inherit;
     text-align: left;
     cursor: pointer;
     transition:
       background-color 0.15s ease,
-      box-shadow 0.15s ease;
+      box-shadow 0.15s ease,
+      transform 0.18s ease-out;
+  }
+  .runner:active {
+    transform: scale(0.98);
+  }
+  .row + .row {
+    border-top: 1px solid var(--line);
+  }
+  .runner:not(.active):hover {
+    background: var(--panel-soft);
   }
   .runner.active {
-    background: var(--tint);
-    box-shadow: inset 2px 0 0 var(--accent);
+    background: color-mix(in srgb, var(--accent) 12%, var(--panel));
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+  .runner.active .rank {
+    color: var(--accent);
+  }
+  .showing {
+    flex: 0 0 auto;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    color: var(--accent);
+    font-size: 10.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .live-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-2);
+  }
+  .live-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--ok);
+    animation: live-pulse 2s ease-in-out infinite;
+  }
+  @keyframes live-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 45%, transparent);
+    }
+    50% {
+      box-shadow: 0 0 0 5px transparent;
+    }
+  }
+  .live-hint {
+    color: var(--ink-3);
+  }
+  .live-err {
+    color: var(--stop);
   }
   .spark-wrap {
     display: inline-flex;
@@ -1073,6 +1165,11 @@
       font-size: 11px;
     }
   }
+  @media (max-width: 560px) {
+    .live-hint {
+      display: none;
+    }
+  }
   @media (max-width: 420px) {
     .spark-wrap {
       display: none;
@@ -1083,6 +1180,9 @@
       animation: none;
     }
     .eyebrow {
+      animation: none;
+    }
+    .live-dot {
       animation: none;
     }
   }
