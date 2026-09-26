@@ -163,7 +163,7 @@ describe("API", () => {
     expect(catalog.status).toBe(200);
     expect(catalog.body.name).toBe("UltraX");
     expect(catalog.body.tagline).toBe(
-      "Predictive intelligence for stocks on OKX",
+      "Predictive market intelligence for everything stocks on OKX",
     );
     expect(catalog.body.endpoints.paid).toHaveLength(3);
 
