@@ -79,16 +79,14 @@ button {
 }
 
 /* section reveal (`.in` is added by the IntersectionObserver action) */
-.block > * {
+html.js .block:not(.in) > * {
   opacity: 0;
   transform: translateY(14px);
+}
+.block > * {
   transition:
     opacity 0.5s ease,
     transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.block.in > * {
-  opacity: 1;
-  transform: none;
 }
 .block.in > *:nth-child(2) { transition-delay: 40ms; }
 .block.in > *:nth-child(3) { transition-delay: 80ms; }
@@ -98,8 +96,6 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   .block > * {
-    opacity: 1;
-    transform: none;
     transition: none;
   }
 }

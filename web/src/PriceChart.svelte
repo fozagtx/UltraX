@@ -92,8 +92,15 @@
     hover !== null && $shown.length ? xy($shown, hover) : null,
   );
 
-  let positive = $derived((returnPct ?? 0) >= 0);
+  let positive = $derived(
+    closes.length > 1 ? closes[closes.length - 1]! >= closes[0]! : true,
+  );
   let accent = $derived(positive ? "var(--ok)" : "var(--stop)");
+  let change30d = $derived(
+    closes.length > 1 && closes[0] !== 0
+      ? (closes[closes.length - 1]! / closes[0]! - 1) * 100
+      : null,
+  );
 
   function onMove(e: PointerEvent) {
     const svg = e.currentTarget as SVGSVGElement;
@@ -127,7 +134,14 @@
     </div>
     <div class="chart-nums">
       <span class="last mono">{hover !== null && closes[hover] != null ? price(closes[hover]) : price(last)}</span>
-      <span class="ret mono" class:up={positive} class:dn={!positive}>{fmtPct(returnPct)}</span>
+      <span class="rets">
+        <span class="ret mono" class:up={(returnPct ?? 0) >= 0} class:dn={(returnPct ?? 0) < 0}>
+          <span class="ret-tag">{periodLabel}</span> {fmtPct(returnPct)}
+        </span>
+        <span class="ret mono" class:up={(change30d ?? 0) >= 0} class:dn={(change30d ?? 0) < 0}>
+          <span class="ret-tag">30d</span> {fmtPct(change30d)}
+        </span>
+      </span>
     </div>
   </header>
   {#if closes.length}
@@ -226,9 +240,22 @@
     font-size: 22px;
     letter-spacing: -0.02em;
   }
+  .rets {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+  }
   .ret {
     font-size: 12.5px;
     font-weight: 600;
+    white-space: nowrap;
+  }
+  .ret-tag {
+    color: var(--ink-3);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.03em;
   }
   .ret.up {
     color: var(--ok);

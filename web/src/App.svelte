@@ -29,21 +29,28 @@
   let selected = $state<string | null>(null);
 
   function reveal(node: HTMLElement) {
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      node.classList.add("in");
+    const show = () => node.classList.add("in");
+    const fallback = setTimeout(show, 1200);
+    if (
+      matchMedia("(prefers-reduced-motion: reduce)").matches ||
+      typeof IntersectionObserver === "undefined"
+    ) {
+      show();
       return;
     }
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          node.classList.add("in");
-          io.disconnect();
-        }
+        if (entries.some((e) => e.isIntersecting)) show();
       },
-      { threshold: 0.05 },
+      { threshold: 0.05, rootMargin: "0px 0px -10% 0px" },
     );
     io.observe(node);
-    return { destroy: () => io.disconnect() };
+    return {
+      destroy: () => {
+        clearTimeout(fallback);
+        io.disconnect();
+      },
+    };
   }
 
   let topbar = $state<HTMLElement | null>(null);
@@ -284,7 +291,7 @@
               <span class="meta">
                 {#if r.preIpo}<span class="badge">Pre-IPO</span>{:else}<span class="mono">{r.symbol}-USDT-SWAP</span>{/if}
               </span>
-              <span class="spark-wrap"><Sparkline values={r.closes ?? []} positive={(r.returnPct ?? 0) >= 0} /></span>
+              <span class="spark-wrap"><Sparkline values={r.closes ?? []} positive={(r.closes?.length ?? 0) > 1 ? r.closes[r.closes.length - 1]! >= r.closes[0]! : true} /></span>
               <span class="price mono">{price(r.last)}</span>
               <span class="ret" style:color={pctColor(r.returnPct)}>{fmtPct(r.returnPct)}</span>
             </button>
