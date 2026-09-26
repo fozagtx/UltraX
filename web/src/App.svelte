@@ -13,6 +13,10 @@
     type Preview,
   } from "./api";
   import Logo from "./Logo.svelte";
+  import Sparkline from "./Sparkline.svelte";
+  import PriceChart from "./PriceChart.svelte";
+  import KineticLoader from "./KineticLoader.svelte";
+  import FlipText from "./FlipText.svelte";
 
   let health = $state<Health | null>(null);
   let preview = $state<Preview | null>(null);
@@ -22,6 +26,27 @@
   let lastRefresh = $state<Date | null>(null);
   let dark = $state(false);
   let period = $state<Period>("daily");
+  let selected = $state<string | null>(null);
+
+  function reveal(node: HTMLElement) {
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      node.classList.add("in");
+      return;
+    }
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          node.classList.add("in");
+          io.disconnect();
+        }
+      },
+      { threshold: 0.05 },
+    );
+    io.observe(node);
+    return { destroy: () => io.disconnect() };
+  }
+
+  let topbar = $state<HTMLElement | null>(null);
 
   const EXPLORER = "https://www.okx.com/web3/explorer/xlayer";
   const PERIODS: { key: Period; label: string }[] = [
@@ -63,9 +88,20 @@
       (!localStorage.getItem("ultrax-theme") &&
         matchMedia("(prefers-color-scheme: dark)").matches);
     document.documentElement.dataset.theme = dark ? "dark" : "light";
+    const el = topbar;
+    const move = (e: PointerEvent) => {
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      el.style.setProperty("--mx", `${e.clientX - rect.left}px`);
+      el.style.setProperty("--my", `${e.clientY - rect.top}px`);
+    };
+    el?.addEventListener("pointermove", move);
     load();
     const id = setInterval(load, 60_000);
-    return () => clearInterval(id);
+    return () => {
+      el?.removeEventListener("pointermove", move);
+      clearInterval(id);
+    };
   });
 
   const usd = (n: number | null | undefined, digits = 2) =>
@@ -122,6 +158,9 @@
   }
 
   let runners = $derived(preview?.runners[period] ?? []);
+  let featured = $derived(
+    runners.find((r) => r.symbol === selected) ?? runners[0] ?? null,
+  );
   let cal = $derived(preview?.model.calibration[period] ?? null);
   let exampleBody = $derived(
     period === "daily"
@@ -133,7 +172,7 @@
 </script>
 
 <div class="frame">
-<header class="topbar">
+<header class="topbar" bind:this={topbar}>
   <a class="brand" href="/">
     <span class="mark" aria-hidden="true"></span>
     <span>ultra<span class="dim">x</span></span>
@@ -168,9 +207,10 @@
 
 <main>
   <section class="hero">
+    <div class="rays" aria-hidden="true"></div>
     <div class="hero-copy">
       <span class="eyebrow">OKX AI · A2MCP agent service · x402 on X Layer</span>
-      <h1>Predictive intelligence for stocks on OKX.</h1>
+      <h1><FlipText text="Predictive intelligence for stocks on OKX." /></h1>
       <p class="sub">Runners, signals and pre-IPO data for agents.</p>
       <div class="hero-meta">
         <span class="chip" class:open={preview?.usMarket.open} class:closed={preview && !preview.usMarket.open}>
@@ -204,40 +244,57 @@
     </aside>
   </section>
 
-  <section id="runners" class="block">
+  <section id="runners" class="block" use:reveal>
     <header class="block-head">
       <span class="num">01</span>
       <h2>Top runners</h2>
       <p class="lead">Biggest movers among OKX stock perps with at least $100K 24h volume.</p>
       <div class="seg" role="tablist" aria-label="Runner period">
         {#each PERIODS as p (p.key)}
-          <button role="tab" aria-selected={period === p.key} class:on={period === p.key} onclick={() => (period = p.key)}>
+          <button role="tab" aria-selected={period === p.key} class:on={period === p.key} onclick={() => { period = p.key; selected = null; }}>
             {p.label}
             <span class="count">{preview?.runners[p.key]?.length ?? 0}</span>
           </button>
         {/each}
       </div>
     </header>
+    {#if featured}
+      <PriceChart
+        symbol={featured.symbol}
+        last={featured.last}
+        returnPct={featured.returnPct}
+        closes={featured.closes ?? []}
+        preIpo={featured.preIpo}
+        periodLabel={PERIODS.find((p) => p.key === period)?.label.toLowerCase() ?? period}
+      />
+    {/if}
     {#if runners.length}
       <ol class="list">
         {#each runners as r, i (r.symbol)}
-          <li class="item runner">
-            <span class="rank mono">{String(i + 1).padStart(2, "0")}</span>
-            <Logo symbol={r.symbol} listed={!r.preIpo} />
-            <span class="name">{r.symbol}</span>
-            <span class="sep">·</span>
-            <span class="meta">
-              {#if r.preIpo}<span class="badge">Pre-IPO</span>{:else}<span class="mono">{r.symbol}-USDT-SWAP</span>{/if}
-            </span>
-            <span class="price mono">{price(r.last)}</span>
-            <span class="ret" style:color={pctColor(r.returnPct)}>{fmtPct(r.returnPct)}</span>
+          <li class="row">
+            <button
+              class="item runner"
+              class:active={featured?.symbol === r.symbol}
+              onclick={() => (selected = r.symbol)}
+            >
+              <span class="rank mono">{String(i + 1).padStart(2, "0")}</span>
+              <Logo symbol={r.symbol} listed={!r.preIpo} />
+              <span class="name">{r.symbol}</span>
+              <span class="sep">·</span>
+              <span class="meta">
+                {#if r.preIpo}<span class="badge">Pre-IPO</span>{:else}<span class="mono">{r.symbol}-USDT-SWAP</span>{/if}
+              </span>
+              <span class="spark-wrap"><Sparkline values={r.closes ?? []} positive={(r.returnPct ?? 0) >= 0} /></span>
+              <span class="price mono">{price(r.last)}</span>
+              <span class="ret" style:color={pctColor(r.returnPct)}>{fmtPct(r.returnPct)}</span>
+            </button>
           </li>
         {/each}
       </ol>
     {:else if preview}
       <p class="empty">No runners for this period yet.</p>
     {:else}
-      <p class="empty">Loading runners…</p>
+      <p class="empty"><KineticLoader label="loading runners" /></p>
     {/if}
     <div class="calib">
       <span>Model <span class="mono">{preview?.model.name ?? "ultrax-momentum-v1"}</span> · walk-forward backtest on OKX history</span>
@@ -245,13 +302,13 @@
         {#if cal}
           hit rate <strong>{rate(cal.hitRate)}</strong> · base up-rate {rate(cal.baseUpRate)} · {cal.samples.toLocaleString("en-US")} samples
         {:else}
-          calibrating…
+          <KineticLoader label="calibrating" />
         {/if}
       </span>
     </div>
   </section>
 
-  <section id="preipo" class="block">
+  <section id="preipo" class="block" use:reveal>
     <header class="block-head">
       <span class="num">02</span>
       <h2>Pre-IPO contracts</h2>
@@ -270,6 +327,7 @@
               <span class="delta" style:color={pctColor(c.change24hPct)}>{fmtPct(c.change24hPct)}</span>
             </header>
             <div class="big">{price(c.last)}</div>
+            <div class="tile-spark"><Sparkline values={c.closes ?? []} positive={(c.change24hPct ?? 0) >= 0} width={208} height={40} /></div>
             <div class="kv"><span>Implied valuation</span><strong>{compactUsd(c.impliedValuationUsd)}</strong></div>
           </article>
         {/each}
@@ -277,11 +335,11 @@
     {:else if preview}
       <p class="empty">No pre-IPO contracts are live on OKX right now.</p>
     {:else}
-      <p class="empty">Loading pre-IPO contracts…</p>
+      <p class="empty"><KineticLoader label="loading pre-ipo contracts" /></p>
     {/if}
   </section>
 
-  <section id="api" class="block">
+  <section id="api" class="block" use:reveal>
     <header class="block-head">
       <span class="num">03</span>
       <h2>Call it from your agent</h2>
@@ -290,6 +348,9 @@
         <code>400 input_required</code> before any payment.
       </p>
     </header>
+    <p class="cta-row">
+      <a class="cta" href="https://web3.okx.com/ai/marketplace" target="_blank" rel="noreferrer">Open on OKX AI ↗</a>
+    </p>
     <pre>{`curl -s -X POST ${API_BASE}/runners \\
   -H 'content-type: application/json' \\
   -d '${exampleBody}'`}</pre>
@@ -314,7 +375,7 @@
     {/if}
   </section>
 
-  <section id="payments" class="block">
+  <section id="payments" class="block" use:reveal>
     <header class="block-head">
       <span class="num">04</span>
       <h2>Service payments</h2>
@@ -367,6 +428,8 @@
   }
 
   .topbar {
+    --mx: 50%;
+    --my: 50%;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -378,6 +441,20 @@
     background: color-mix(in srgb, var(--bg) 86%, transparent);
     backdrop-filter: blur(10px);
     border-bottom: 1px dashed var(--dash);
+  }
+  .topbar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(220px 48px at var(--mx) var(--my), color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
+      linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 35%, transparent), transparent) bottom / 100% 1px no-repeat;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .topbar:hover::after {
+    opacity: 1;
   }
   .brand {
     display: flex;
@@ -467,19 +544,76 @@
     background: transparent;
     color: var(--ink-2);
     cursor: pointer;
+    transition:
+      background-color 0.18s ease-out,
+      box-shadow 0.18s ease-out,
+      color 0.18s ease-out,
+      transform 0.18s ease-out;
   }
   .icon-btn:hover {
     background: var(--panel-soft);
     color: var(--ink);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+      0 0 16px color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+  .icon-btn:active {
+    transform: scale(0.98);
+  }
+  :global(button:focus-visible),
+  :global(a:focus-visible),
+  :global(.runner:focus-visible) {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
 
   .hero {
+    position: relative;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 300px;
     gap: 32px;
     align-items: start;
     padding: 48px 24px 40px;
     border-bottom: 1px dashed var(--dash);
+    overflow: hidden;
+  }
+  .hero > :not(.rays) {
+    position: relative;
+  }
+  .rays {
+    position: absolute;
+    inset: -45%;
+    pointer-events: none;
+    background: repeating-conic-gradient(
+      from 0deg at 68% 34%,
+      color-mix(in srgb, var(--accent) 9%, transparent) 0deg 7deg,
+      transparent 7deg 19deg
+    );
+    -webkit-mask-image: radial-gradient(55% 55% at 68% 34%, black, transparent 72%);
+    mask-image: radial-gradient(55% 55% at 68% 34%, black, transparent 72%);
+    opacity: 0.35;
+    animation: rays-drift 26s linear infinite;
+  }
+  :global(:root[data-theme="dark"]) .rays {
+    opacity: 0.85;
+  }
+  @keyframes rays-drift {
+    to {
+      transform: rotate(1turn);
+    }
+  }
+  .eyebrow {
+    animation: fade-up 0.6s ease-out both;
+  }
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
   .eyebrow,
   .label {
@@ -496,7 +630,7 @@
     margin: 14px 0 12px;
     font-family: var(--display);
     font-weight: 500;
-    font-size: clamp(32px, 5vw, 48px);
+    font-size: clamp(2.4rem, 6vw, 4.5rem);
     line-height: 1.04;
     letter-spacing: -0.03em;
     max-width: 14ch;
@@ -567,12 +701,55 @@
     letter-spacing: -0.02em;
   }
   .promo-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 10px;
+    margin: -5px -10px 0;
+    border-radius: 8px;
     font-size: 13px;
     font-weight: 500;
     color: var(--accent);
+    transition:
+      box-shadow 0.18s ease-out,
+      transform 0.18s ease-out;
+  }
+  .promo-link:hover {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+      0 0 16px color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+  .promo-link:active {
+    transform: scale(0.98);
   }
   .promo-link .arrow {
     color: inherit;
+  }
+  .cta-row {
+    margin: 0 0 14px;
+  }
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: 600;
+    font-size: 13.5px;
+    letter-spacing: -0.01em;
+    transition:
+      box-shadow 0.18s ease-out,
+      transform 0.18s ease-out;
+  }
+  .cta:hover {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--accent) 65%, transparent),
+      0 0 24px color-mix(in srgb, var(--accent) 45%, transparent);
+  }
+  .cta:active {
+    transform: scale(0.98);
   }
 
   .block {
@@ -624,10 +801,20 @@
     font-size: 13px;
     color: var(--ink-2);
     cursor: pointer;
-    transition: background-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
+    transition:
+      background-color 0.18s ease-out,
+      box-shadow 0.18s ease-out,
+      color 0.18s ease-out,
+      transform 0.18s ease-out;
   }
   .seg button:hover {
     color: var(--ink);
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+      0 0 16px color-mix(in srgb, var(--accent) 28%, transparent);
+  }
+  .seg button:active {
+    transform: scale(0.98);
   }
   .seg button.on {
     background: var(--panel);
@@ -658,6 +845,34 @@
   }
   .item:hover {
     background: var(--panel-soft);
+  }
+  .row {
+    list-style: none;
+  }
+  .runner {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+    transition:
+      background-color 0.15s ease,
+      box-shadow 0.15s ease;
+  }
+  .runner.active {
+    background: var(--tint);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+  .spark-wrap {
+    display: inline-flex;
+    flex: 0 0 auto;
+  }
+  .tile-spark {
+    margin: -6px 0 10px;
+  }
+  .tile-spark :global(.spark) {
+    width: 100%;
+    height: 40px;
   }
   .rank {
     width: 22px;
@@ -892,6 +1107,19 @@
     }
     .item .meta {
       font-size: 11px;
+    }
+  }
+  @media (max-width: 420px) {
+    .spark-wrap {
+      display: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rays {
+      animation: none;
+    }
+    .eyebrow {
+      animation: none;
     }
   }
 </style>
