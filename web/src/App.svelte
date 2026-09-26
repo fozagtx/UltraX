@@ -187,8 +187,6 @@
     <a href="#runners">Runners</a>
     <a href="#preipo">Pre-IPO</a>
     <a href="#api">Agents</a>
-    <a href="#payments">Payments</a>
-    <a href="https://web3.okx.com/ai/marketplace" target="_blank" rel="noreferrer">OKX AI <span class="arrow">↗</span></a>
   </nav>
   <div class="actions">
     <span class="kbd status" class:live={health?.status === "ok"} class:down={error && !health}>
