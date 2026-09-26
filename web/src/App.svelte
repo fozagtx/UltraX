@@ -169,13 +169,12 @@
     runners.find((r) => r.symbol === selected) ?? runners[0] ?? null,
   );
   let cal = $derived(preview?.model.calibration[period] ?? null);
-  let exampleBody = $derived(
-    period === "daily"
-      ? `{"period":"daily","direction":"up","limit":10}`
-      : period === "weekly"
-        ? `{"period":"weekly","direction":"up","limit":10}`
-        : `{"period":"monthly","direction":"up","limit":10}`,
-  );
+  const SERVICE_LABELS: Record<string, string> = {
+    "/runners": "Stock runners ranking",
+    "/signal": "Stock signal report",
+    "/preipo": "Pre-IPO intelligence",
+  };
+  const serviceLabel = (path: string) => SERVICE_LABELS[path] ?? path;
 </script>
 
 <div class="frame">
@@ -187,9 +186,9 @@
   <nav class="links">
     <a href="#runners">Runners</a>
     <a href="#preipo">Pre-IPO</a>
-    <a href="#api">API</a>
+    <a href="#api">Agents</a>
     <a href="#payments">Payments</a>
-    <a href={`${API_BASE}/catalog`} target="_blank" rel="noreferrer">Catalog <span class="arrow">↗</span></a>
+    <a href="https://web3.okx.com/ai/marketplace" target="_blank" rel="noreferrer">OKX AI <span class="arrow">↗</span></a>
   </nav>
   <div class="actions">
     <span class="kbd status" class:live={health?.status === "ok"} class:down={error && !health}>
@@ -349,37 +348,26 @@
   <section id="api" class="block" use:reveal>
     <header class="block-head">
       <span class="num">03</span>
-      <h2>Call it from your agent</h2>
+      <h2>Use it from your agent</h2>
       <p class="lead">
-        Unpaid requests answer <code>402</code> with a <code>PAYMENT-REQUIRED</code> header; missing inputs answer
-        <code>400 input_required</code> before any payment.
+        UltraX is listed on OKX AI. Point your agent at it and pay per call in USDT0 on X Layer.
       </p>
     </header>
-    <p class="cta-row">
-      <a class="cta" href="https://web3.okx.com/ai/marketplace" target="_blank" rel="noreferrer">Open on OKX AI ↗</a>
-    </p>
-    <pre>{`curl -s -X POST ${API_BASE}/runners \\
-  -H 'content-type: application/json' \\
-  -d '${exampleBody}'`}</pre>
     {#if catalog}
       <ul class="list">
         {#each catalog.endpoints.paid as e (e.path)}
           <li class="item endpoint">
-            <span class="verb mono">{e.method}</span>
-            <span class="name mono">{e.path}</span>
+            <span class="name">{serviceLabel(e.path)}</span>
             <span class="sep desc">·</span>
             <span class="meta desc">{e.description}</span>
-            <span class="price-pill">{e.priceUsd} USDT0</span>
+            <span class="price-pill">{e.priceUsd} USDT0 / call</span>
           </li>
         {/each}
       </ul>
-      <div class="tags">
-        <span class="label">Free</span>
-        {#each catalog.endpoints.free as e (e)}
-          <span class="kbd">{e}</span>
-        {/each}
-      </div>
     {/if}
+    <p class="cta-row">
+      <a class="cta" href="https://web3.okx.com/ai/marketplace" target="_blank" rel="noreferrer">Open on OKX AI ↗</a>
+    </p>
   </section>
 
   <section id="payments" class="block" use:reveal>
@@ -788,9 +776,6 @@
     color: var(--ink-3);
     font-size: 13.5px;
   }
-  .lead code {
-    color: var(--ink-2);
-  }
 
   .seg {
     display: flex;
@@ -1012,22 +997,6 @@
     font-weight: 600;
   }
 
-  pre {
-    margin: 0 0 14px;
-    padding: 14px 16px;
-    border-radius: 12px;
-    background: var(--panel-soft);
-    box-shadow: inset 0 0 0 1px var(--line);
-    font-family: var(--mono);
-    font-size: 12.5px;
-    line-height: 1.6;
-    overflow-x: auto;
-  }
-  .verb {
-    width: 38px;
-    font-size: 10.5px;
-    color: var(--accent);
-  }
   .endpoint .name {
     font-weight: 500;
     font-size: 12.5px;
@@ -1041,16 +1010,6 @@
     font-family: var(--mono);
     font-size: 11.5px;
     white-space: nowrap;
-  }
-  .tags {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px;
-    margin-top: 14px;
-  }
-  .tags .label {
-    margin-right: 4px;
   }
   .stats {
     display: flex;
