@@ -216,7 +216,7 @@
     <div class="rays" aria-hidden="true"></div>
     <div class="hero-copy">
       <span class="eyebrow">OKX AI · A2MCP agent service · x402 on X Layer</span>
-      <h1><FlipText text="Predictive market intelligence for everything stocks on OKX." /></h1>
+      <h1><FlipText text="Market intelligence for everything stocks on OKX." /></h1>
       <p class="sub">Runners, signals and pre-IPO data for agents.</p>
       <div class="hero-meta">
         <span class="chip" class:open={preview?.usMarket.open} class:closed={preview && !preview.usMarket.open}>
