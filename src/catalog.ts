@@ -41,7 +41,7 @@ export function buildCatalog(
 ) {
   return {
     name: "UltraX",
-    tagline: "Predictive market intelligence for everything stocks on OKX",
+    tagline: "Market intelligence for everything stocks on OKX",
     endpoints: {
       paid: paidEndpoints,
       free: [

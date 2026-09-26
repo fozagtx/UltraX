@@ -8,7 +8,7 @@ app_port: 7860
 pinned: false
 ---
 
-# UltraX — predictive market intelligence for everything stocks on OKX
+# UltraX — market intelligence for everything stocks on OKX
 
 A paid market-intelligence API for AI agents covering every stock listed on OKX:
 stock perpetuals (for example `NVDA-USDT-SWAP`), xStock spot pairs (`XNVDA-USDT`)
