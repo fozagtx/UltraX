@@ -80,6 +80,11 @@ export function buildCatalog(
       payTo,
       pricesUsd: PRICE_USD,
     },
+    okxAgent: {
+      id: "13937",
+      url: "https://www.okx.ai/agents/13937",
+      marketplaceUrl: "https://www.okx.ai",
+    },
     apiBaseUrl: publicBaseUrl.replace(/\/$/, ""),
     disclaimer: DISCLAIMER,
   };

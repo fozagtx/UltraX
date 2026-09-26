@@ -62,6 +62,7 @@ export interface Catalog {
   name: string;
   tagline: string;
   endpoints: { paid: CatalogEndpoint[]; free: string[] };
+  okxAgent: { id: string; url: string; marketplaceUrl: string };
   disclaimer: string;
 }
 

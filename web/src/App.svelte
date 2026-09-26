@@ -176,12 +176,29 @@
     return preview ? ago(preview.updatedAt) : null;
   });
   let cal = $derived(preview?.model.calibration[period] ?? null);
-  const SERVICE_LABELS: Record<string, string> = {
-    "/runners": "Stock runners ranking",
-    "/signal": "Stock signal report",
-    "/preipo": "Pre-IPO intelligence",
-  };
-  const serviceLabel = (path: string) => SERVICE_LABELS[path] ?? path;
+  let agentUrl = $derived(
+    catalog?.okxAgent.url ?? "https://www.okx.ai/agents/13937",
+  );
+  const SERVICES = [
+    {
+      name: "Stock runners ranking",
+      ask: "Which OKX stock perps ran hardest this week?",
+      get: "Ranked movers with score, up-probability, RSI/trend, funding, open interest and basis for the daily, weekly or monthly horizon.",
+      price: "0.01",
+    },
+    {
+      name: "Stock signal report",
+      ask: "Give me the full read on NVDA.",
+      get: "Score and up-probability over 3 horizons, expected range, support/resistance, funding, OI, long/short ratio, taker flow, basis vs xStock and index.",
+      price: "0.005",
+    },
+    {
+      name: "Pre-IPO intelligence",
+      ask: "What's OpenAI's implied valuation on OKX right now?",
+      get: "Every live pre-IPO contract (or one) with implied valuation, performance since listing, book depth, funding, OI and contract rules.",
+      price: "0.01",
+    },
+  ];
 </script>
 
 <div class="frame">
@@ -251,7 +268,7 @@
         <div><dt>xStocks</dt><dd>{health?.universe.ready ? health.universe.spots : "—"}</dd></div>
         <div><dt>Pre-IPO</dt><dd>{health?.universe.ready ? health.universe.preIpo : "—"}</dd></div>
       </dl>
-      <a class="promo-link" href="https://web3.okx.com/ai/marketplace" target="_blank" rel="noreferrer">Open on OKX AI <span class="arrow">↗</span></a>
+      <a class="promo-link" href={agentUrl} target="_blank" rel="noreferrer">UltraX on OKX AI <span class="arrow">↗</span></a>
     </aside>
   </section>
 
@@ -369,25 +386,33 @@
   <section id="api" class="block" use:reveal>
     <header class="block-head">
       <span class="num">03</span>
-      <h2>Use it from your agent</h2>
+      <h2>Use UltraX from your OKX agent</h2>
       <p class="lead">
-        UltraX is listed on OKX AI. Point your agent at it and pay per call in USDT0 on X Layer.
+        UltraX is an agent service on OKX AI (agent #13937). Your agent finds it, pays per call in USDT0 on X Layer, and gets structured market data back. No API key, no subscription.
       </p>
     </header>
-    {#if catalog}
-      <ul class="list">
-        {#each catalog.endpoints.paid as e (e.path)}
-          <li class="item endpoint">
-            <span class="name">{serviceLabel(e.path)}</span>
-            <span class="sep desc">·</span>
-            <span class="meta desc">{e.description}</span>
-            <span class="price-pill">{e.priceUsd} USDT0 / call</span>
-          </li>
-        {/each}
-      </ul>
-    {/if}
+    <div class="grid svc-grid">
+      {#each SERVICES as s (s.name)}
+        <article class="tile svc">
+          <header class="svc-head">
+            <h3>{s.name}</h3>
+            <span class="price-pill">{s.price} USDT0 / call</span>
+          </header>
+          <p class="svc-line"><span class="svc-tag mono">You ask</span>{s.ask}</p>
+          <p class="svc-line"><span class="svc-tag mono">You get</span>{s.get}</p>
+        </article>
+      {/each}
+    </div>
+    <ol class="steps">
+      <li><span class="step-num mono">01</span>Have an OKX Agentic Wallet with USDT0 on X Layer (Onchain OS sets one up).</li>
+      <li><span class="step-num mono">02</span>Open UltraX on OKX AI or tell your agent: use UltraX for stocks on OKX.</li>
+      <li><span class="step-num mono">03</span>Your agent pays per call and returns the data. Unpaid calls answer 402 automatically.</li>
+    </ol>
     <p class="cta-row">
-      <a class="cta" href="https://web3.okx.com/ai/marketplace" target="_blank" rel="noreferrer">Open on OKX AI ↗</a>
+      <a class="cta" href={agentUrl} target="_blank" rel="noreferrer">Open UltraX on OKX AI ↗</a>
+    </p>
+    <p class="agent-status mono">
+      Agent #13937 · <a href="{EXPLORER}/tx/0x41ddeebc97c74cf14201fa288b0c26e1ab524a9fcfc8fa37bfa598bf1fdf5978" target="_blank" rel="noreferrer">registered on X Layer</a> · <span class="review-note">listing under OKX review</span>
     </p>
   </section>
 
@@ -1087,9 +1112,61 @@
     font-weight: 600;
   }
 
-  .endpoint .name {
-    font-weight: 500;
+  .svc-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .svc {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .svc-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .svc-line {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
     font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .svc-tag {
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    list-style: none;
+    margin: 16px 0 0;
+    padding: 12px 0 0;
+    border-top: 1px dashed var(--dash);
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .steps li {
+    display: flex;
+    gap: 8px;
+  }
+  .step-num {
+    color: var(--accent);
+    font-size: 11px;
+    flex: 0 0 auto;
+  }
+  .agent-status {
+    margin: 10px 0 0;
+    font-size: 11.5px;
+    color: var(--ink-3);
+  }
+  .agent-status a {
+    color: var(--accent);
   }
   .price-pill {
     margin-left: auto;
@@ -1149,7 +1226,6 @@
     .hero {
       padding-top: 32px;
     }
-    .desc,
     .runner .sep,
     .runner .meta .mono {
       display: none;
@@ -1163,6 +1239,12 @@
     }
     .item .meta {
       font-size: 11px;
+    }
+  }
+  @media (max-width: 720px) {
+    .svc-grid,
+    .steps {
+      grid-template-columns: 1fr;
     }
   }
   @media (max-width: 560px) {

@@ -166,6 +166,7 @@ describe("API", () => {
       "Market intelligence for everything stocks on OKX",
     );
     expect(catalog.body.endpoints.paid).toHaveLength(3);
+    expect(catalog.body.okxAgent.id).toBe("13937");
 
     const universe = await request(app).get("/universe");
     expect(universe.status).toBe(200);
