@@ -23,7 +23,7 @@ and pre-IPO contracts (`OPENAI-USDT-SWAP`, `ANTHROPIC-USDT-SWAP`, ...).
   since listing, order-book depth, funding, OI and the contract rules.
 
 Agents pay per call in USDT0 on X Layer using the x402 protocol (OKX Payment
-SDK). The service is listed on OKX AI as an A2MCP service. All market data comes
+SDK). The service is registered on OKX AI as A2MCP agent #13937. All market data comes
 live from OKX's public v5 market API, and the universe is discovered from OKX's
 instrument list, so newly listed stocks appear automatically.
 
@@ -34,6 +34,7 @@ instrument list, so newly listed stocks appear automatically.
 | API (HF Docker Space) | https://pima5-ultrax.hf.space                          |
 | Space repo            | https://huggingface.co/spaces/pima5/ultrax             |
 | Status page (Render)  | https://ultrax-web.onrender.com                        |
+| OKX AI listing        | https://www.okx.ai/agents/13937 (agent #13937)          |
 | Source                | https://github.com/fozagtx/UltraX                      |
 
 Settlement: `eip155:196` (X Layer mainnet), asset USDT0
@@ -229,7 +230,9 @@ digits only, in USDT:
 | OKX Pre-IPO Contract Intelligence | 0.01 | `https://pima5-ultrax.hf.space/preipo`   |
 
 Then activate the identity (`onchainos agent activate`). Review completes within
-24 hours and the result is emailed to the Agentic Wallet address. Once live,
+24 hours and the result is emailed to the Agentic Wallet address. UltraX is
+registered as agent #13937 (tx 0x41dd…5978) and its listing is at
+https://www.okx.ai/agents/13937. Once live,
 every call is billed and settled by the OKX Payment SDK with no manual steps.
 Registration and activation are free; OKX covers network fees.
 
